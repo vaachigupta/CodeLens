@@ -22,8 +22,23 @@ import ast
 import glob
 import re
 
+from pathlib import Path
+
 import chromadb
-from sklearn.feature_extraction.text import TfidfVectorizer
+from chromadb.utils import embedding_functions
+from chromadb.utils.embedding_functions.onnx_mini_lm_l6_v2 import ONNXMiniLM_L6_V2
+
+# Real semantic embedding model (all-MiniLM-L6-v2, run locally via ONNX).
+# The model file (~80 MB) is downloaded automatically the first time it is used.
+# By default Chroma stores it on the C: drive (~/.cache); we keep it inside the
+# project folder instead, so a full C: drive can't break the download.
+ONNXMiniLM_L6_V2.DOWNLOAD_PATH = Path(__file__).resolve().parent / "models" / "all-MiniLM-L6-v2"
+_embedder = embedding_functions.DefaultEmbeddingFunction()
+
+
+def embed_texts(texts: list[str]) -> list[list[float]]:
+    """Turn a list of code strings into a list of embedding vectors."""
+    return [[float(x) for x in vec] for vec in _embedder(texts)]
 
 
 def extract_function_chunks(filepath: str) -> list[dict]:
@@ -50,16 +65,17 @@ def extract_function_chunks(filepath: str) -> list[dict]:
 
 
 def build_vector_store(chunks: list[dict]):
-    """Embed chunks with TF-IDF and load them into a Chroma collection."""
+    """Embed chunks with a semantic embedding model and load them into Chroma."""
     corpus = [c["source"] for c in chunks]
-    vectorizer = TfidfVectorizer()
-    embeddings = vectorizer.fit_transform(corpus).toarray()
+    embeddings = embed_texts(corpus)
 
     client = chromadb.Client()
-    collection = client.get_or_create_collection("codebase_chunks")
+    collection = client.get_or_create_collection(
+        "codebase_chunks", metadata={"hnsw:space": "cosine"}
+    )
     collection.add(
         ids=[c["id"] for c in chunks],
-        embeddings=embeddings.tolist(),
+        embeddings=embeddings,
         documents=[c["source"] for c in chunks],
         metadatas=[
             {
@@ -71,12 +87,12 @@ def build_vector_store(chunks: list[dict]):
             for c in chunks
         ],
     )
-    return collection, vectorizer
+    return collection, _embedder
 
 
 def retrieve_similar(collection, vectorizer, new_code: str, top_k: int = 2):
     """Retrieve the most similar existing chunks to a new code submission."""
-    new_embedding = vectorizer.transform([new_code]).toarray().tolist()
+    new_embedding = embed_texts([new_code])
     results = collection.query(query_embeddings=new_embedding, n_results=top_k)
     return results
 
@@ -152,7 +168,7 @@ if __name__ == "__main__":
     for c in all_chunks:
         print(f"    - {c['id']}")
 
-    print("\n[3] Embedding chunks (TF-IDF placeholder) and loading into Chroma...")
+    print("\n[3] Embedding chunks (MiniLM semantic embeddings) and loading into Chroma...")
     collection, vectorizer = build_vector_store(all_chunks)
     print(f"    Vector store now contains {collection.count()} chunks.")
 

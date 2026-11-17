@@ -18,10 +18,14 @@ You are given REFERENCE functions from that codebase and a NEW function.
 
 Rules:
 1. Only flag places where the NEW function deviates from conventions that are
-   clearly visible in the REFERENCE functions (naming, docstrings, error
-   handling, validation, return shape, typing, etc.).
-2. Do NOT give generic advice that is not backed by the references.
+   clearly visible in the REFERENCE functions. Do NOT give generic advice that
+   is not backed by the references.
+2. Check each of these areas explicitly: function name, parameter names, type
+   hints, docstring, exception type, and error message format.
 3. Every comment must cite exactly ONE reference, using its exact REFERENCE ID.
+   Cite the reference that BEST demonstrates the convention you are describing.
+   Do not cite the same reference for every comment unless it really is the
+   best example each time.
 4. If the new function follows the conventions, return an empty list.
 
 Respond with JSON only, in this shape:
