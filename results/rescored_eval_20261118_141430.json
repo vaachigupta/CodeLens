@@ -1,0 +1,21 @@
+{
+  "source": "results\\eval_20261118_141430.json",
+  "codelens": {
+    "recall": "11/14 = 79%",
+    "comments_on_deviant": 18,
+    "comments_matching_a_seeded_violation": 11,
+    "conformant_files_flagged": "2/5 = 40%",
+    "comments_on_conformant": 4
+  },
+  "baseline": {
+    "recall": "5/14 = 36%",
+    "comments_on_deviant": 51,
+    "comments_matching_a_seeded_violation": 5,
+    "conformant_files_flagged": "5/5 = 100%",
+    "comments_on_conformant": 25
+  },
+  "citation_validity": [
+    22,
+    22
+  ]
+}

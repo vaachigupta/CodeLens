@@ -1,0 +1,17 @@
+[
+  {"file": "conformant_1.py", "violations": []},
+  {"file": "conformant_2.py", "violations": []},
+  {"file": "conformant_3.py", "violations": []},
+  {"file": "conformant_4.py", "violations": []},
+  {"file": "conformant_5.py", "violations": []},
+  {"file": "deviant_1.py",  "violations": ["function_naming", "param_naming"]},
+  {"file": "deviant_2.py",  "violations": ["function_naming"]},
+  {"file": "deviant_3.py",  "violations": ["param_naming"]},
+  {"file": "deviant_4.py",  "violations": ["vague_params"]},
+  {"file": "deviant_5.py",  "violations": ["raises_exception"]},
+  {"file": "deviant_6.py",  "violations": ["bare_except"]},
+  {"file": "deviant_7.py",  "violations": ["logging_module"]},
+  {"file": "deviant_8.py",  "violations": ["string_format"]},
+  {"file": "deviant_9.py",  "violations": ["import_star"]},
+  {"file": "deviant_10.py", "violations": ["function_naming", "param_naming", "vague_params", "raises_exception"]}
+]
