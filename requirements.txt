@@ -1,3 +1,5 @@
 scikit-learn
 chromadb
 groq
+langchain-core 
+langchain-groq
