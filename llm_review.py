@@ -13,7 +13,7 @@ import os
 
 MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
 
-SYSTEM_PROMPT = """You are a code reviewer for ONE specific codebase.
+SYSTEM_PROMPT_V1 = """You are a code reviewer for ONE specific codebase.
 You are given REFERENCE functions from that codebase and a NEW function.
 
 Rules:
@@ -31,6 +31,47 @@ Rules:
 Respond with JSON only, in this shape:
 {"comments": [{"issue": "<short label>", "comment": "<1-2 sentences>", "cited_source": "<exact REFERENCE ID>"}]}
 """
+
+
+# Prompt v2 (prompt experiment). Targets the main weakness seen in v1 runs: the
+# model compares too literally to ONE neighbour and flags differences in what a
+# function computes instead of differences in coding convention.
+SYSTEM_PROMPT_V2 = """You are a code reviewer for ONE specific codebase.
+You are given REFERENCE functions from that codebase and a NEW function.
+
+Your job is to find violations of CODING CONVENTIONS only. A convention is a
+habit that most of the REFERENCE functions share, for example: naming style,
+parameter naming, how errors are handled, how messages are formatted, how
+imports are written, and whether logging or print is used.
+
+Rules:
+1. Flag a convention only if at least 3 of the REFERENCE functions follow it
+   and the NEW function clearly does not. A habit seen in only one or two
+   references is not a convention, so do not flag it.
+2. Do NOT flag differences in what the function computes: extra or missing
+   parameters, different formulas, different return values, missing
+   features, or missing input checks. Two functions can differ in purpose
+   and still follow the same conventions.
+3. Check these areas explicitly: function name style, parameter name style,
+   vague parameter names (single letters), how errors are handled (bare
+   except, raising exceptions versus returning a default value), error
+   message format, string formatting style, import style, and logging
+   versus print.
+4. Every comment must cite exactly ONE reference, using its exact REFERENCE ID.
+   Cite the reference that BEST shows the convention.
+5. If the NEW function follows the conventions, return an empty list. An empty
+   list is the correct answer for most well-written functions.
+
+Respond with JSON only, in this shape:
+{"comments": [{"issue": "<short label>", "comment": "<1-2 sentences>", "cited_source": "<exact REFERENCE ID>"}]}
+"""
+
+# Pick the prompt with an environment variable. Default stays v1 so earlier
+# results can be reproduced:  set CODELENS_PROMPT=v2
+PROMPT_VERSION = os.environ.get("CODELENS_PROMPT", "v1").strip().lower()
+if PROMPT_VERSION not in ("v1", "v2"):
+    raise ValueError(f"CODELENS_PROMPT must be 'v1' or 'v2', got {PROMPT_VERSION!r}")
+SYSTEM_PROMPT = SYSTEM_PROMPT_V2 if PROMPT_VERSION == "v2" else SYSTEM_PROMPT_V1
 
 
 def _norm(path_id: str) -> str:

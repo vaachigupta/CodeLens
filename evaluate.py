@@ -37,6 +37,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableLambda
 
 from chain import CodebaseRetriever, build_chain, get_llm, get_mock_llm
+from llm_review import PROMPT_VERSION
 from codelens import build_vector_store, collect_repo_chunks
 
 
@@ -53,10 +54,10 @@ CATEGORY_RULES = {
     ) or (not _is_param_comment(t) and bool(re.search(r"camel|pascal|snake_case|naming convention|name style", t))),
     "param_naming": lambda t: _is_param_comment(t)
     and bool(re.search(r"camel|pascal|snake|lower|capital|upper|naming|case", t)),
+    # strict: must be about parameter/variable names (a bare "unclear" in a docstring comment does not count)
     "vague_params": lambda t: bool(
-        re.search(r"single[- ]letter|one[- ]letter|vague|non[- ]descriptive|not descriptive|cryptic|short (param|name|variable)|meaningful|descriptive (param|name|variable)|unclear|abbreviat", t)
+        re.search(r"single[- ]letter|one[- ]letter|cryptic|non[- ]descriptive|not descriptive|abbreviat|short (param|name|variable)|vague (param|name|variable)|(meaningful|descriptive|clear) (param|name|variable)", t)
     ),
-    # strict: the comment must talk about raising AND say the codebase returns a default / does not raise
     "raises_exception": lambda t: bool(re.search(r"\brais(e|es|ed|ing)\b|valueerror", t))
     and bool(re.search(r"return(s|ing)?\b|\bnan\b|default value|instead of rais|rather than rais|(never|not|no|n't) rais", t)),
     "bare_except": lambda t: bool(
@@ -72,10 +73,18 @@ CATEGORY_RULES = {
 }
 
 
+# A comment saying the name already FOLLOWS snake_case / PEP8 is the opposite of flagging a naming violation.
+_CONFORMS = re.compile(r"\bfollows (the )?(snake|pep)")
+for _cat in ("function_naming", "param_naming"):
+    _rule = CATEGORY_RULES[_cat]
+    CATEGORY_RULES[_cat] = lambda t, _rule=_rule: _rule(t) and not _CONFORMS.search(t)
+
+
 def comment_text(c) -> str:
     if not isinstance(c, dict):
         return str(c).lower()
-    return f"{c.get('issue', '')} {c.get('comment', '')}".lower()
+    t = f"{c.get('issue', '')} {c.get('comment', '')}".lower()
+    return re.sub("[\u2010-\u2015\u2212]", "-", t)
 
 
 def categories_caught(expected: list[str], comments: list) -> list[str]:
@@ -119,16 +128,21 @@ def get_mock_baseline_llm():
 
 
 # ---------------------------------------------------------------------- runner
-def with_retry(fn, tries: int = 4):
-    """Call fn(); if Groq says 'rate limit' (429), wait and try again."""
+def with_retry(fn, tries: int = 6):
+    """Call fn(); on a rate limit (429) or a network drop, wait and try again."""
     for attempt in range(1, tries + 1):
         try:
             return fn()
         except Exception as e:  # noqa: BLE001
             msg = str(e).lower()
-            if attempt < tries and ("429" in msg or "rate" in msg):
+            if "per day" in msg or "tokens per day" in msg:
+                raise SystemExit("Groq DAILY limit reached. Stop and try again after it resets.")
+            rate = "429" in msg or "rate limit" in msg
+            net = any(w in msg for w in ("connection", "getaddrinfo", "timed out", "timeout"))
+            if attempt < tries and (rate or net):
                 wait = 15 * attempt
-                print(f"      (rate limited, waiting {wait}s...)")
+                why = "rate limited" if rate else "network problem"
+                print(f"      ({why}, waiting {wait}s, retry {attempt}/{tries - 1}...)")
                 time.sleep(wait)
                 continue
             raise
@@ -193,10 +207,10 @@ def save_report(rows, args, cl, bl, kept, dropped, has_baseline):
     os.makedirs("results", exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     with open(f"results/eval_{stamp}.json", "w", encoding="utf-8") as f:
-        json.dump({"repo": args.repo, "top_k": args.top_k, "mock": args.mock, "codelens": cl, "baseline": bl,
+        json.dump({"repo": args.repo, "cases": args.cases, "prompt": PROMPT_VERSION, "top_k": args.top_k, "mock": args.mock, "codelens": cl, "baseline": bl,
                    "citation_validity": [kept, kept + dropped], "rows": rows}, f, indent=2)
 
-    lines = [f"# CodeLens evaluation {stamp}", f"Repo: `{args.repo}`  |  top-k: {args.top_k}  |  mock: {args.mock}", ""]
+    lines = [f"# CodeLens evaluation {stamp}", f"Repo: `{args.repo}`  |  cases: {args.cases}  |  prompt: {PROMPT_VERSION}  |  top-k: {args.top_k}  |  mock: {args.mock}", ""]
     for r in rows:
         lines += [f"## {r['file']}", f"Expected: {', '.join(r['expected']) or '(none, should be silent)'}", "",
                   "References retrieved: " + ", ".join(f"`{x}`" for x in r["refs"]), "", "**CodeLens:**"]

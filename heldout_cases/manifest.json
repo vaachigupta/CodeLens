@@ -1,0 +1,10 @@
+[
+  {"file": "conformant_h1.py", "violations": []},
+  {"file": "conformant_h2.py", "violations": []},
+  {"file": "conformant_h3.py", "violations": []},
+  {"file": "conformant_h4.py", "violations": []},
+  {"file": "deviant_h1.py", "violations": ["function_naming", "param_naming"]},
+  {"file": "deviant_h2.py", "violations": ["raises_exception"]},
+  {"file": "deviant_h3.py", "violations": ["vague_params"]},
+  {"file": "deviant_h4.py", "violations": ["bare_except", "string_format"]}
+]
