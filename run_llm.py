@@ -2,16 +2,17 @@
 run_llm.py - CodeLens end-to-end run with LLM-generated review comments.
 
 Usage:
-    python run_llm.py                  # real run, needs GROQ_API_KEY
-    python run_llm.py --mock           # offline plumbing test, no API key
-    python run_llm.py path/to/file.py  # review a different file
+    python run_llm.py                              # review new_submission.py against sample_codebase/
+    python run_llm.py --mock                       # offline plumbing test, no API key
+    python run_llm.py path/to/file.py              # review a different file
+    python run_llm.py file.py --repo path/to/repo  # index a real repo instead
+    python run_llm.py file.py --repo repo --top-k 5
 """
 
-import glob
 import json
 import sys
 
-from codelens import build_vector_store, extract_function_chunks, retrieve_similar
+from codelens import build_vector_store, collect_repo_chunks, retrieve_similar
 from llm_review import call_groq, review_with_llm
 
 
@@ -43,24 +44,40 @@ def make_fake_llm(real_id: str):
     return fake_llm
 
 
+def get_option(name: str, default=None):
+    """Read `--name value` from the command line."""
+    if name in sys.argv:
+        i = sys.argv.index(name)
+        if i + 1 < len(sys.argv):
+            return sys.argv[i + 1]
+    return default
+
+
 def main():
-    args = [a for a in sys.argv[1:] if not a.startswith("--")]
     use_mock = "--mock" in sys.argv
+    repo = get_option("--repo", "sample_codebase")
+    top_k = int(get_option("--top-k", 3))
+    # positional args = anything that is not a flag or a flag's value
+    flag_values = {get_option("--repo"), get_option("--top-k")}
+    args = [a for a in sys.argv[1:] if not a.startswith("--") and a not in flag_values]
     target = args[0] if args else "new_submission.py"
 
-    print("[1] Ingesting codebase...")
-    chunks = []
-    for path in sorted(glob.glob("sample_codebase/*.py")):
-        chunks.extend(extract_function_chunks(path))
-    print(f"    {len(chunks)} function chunks")
+    print(f"[1] Ingesting codebase: {repo}")
+    chunks, n_files, skipped = collect_repo_chunks(repo, exclude=target)
+    print(f"    {n_files} file(s), {len(chunks)} function/method chunks")
+    if skipped:
+        print(f"    skipped {len(skipped)} file(s) that could not be parsed")
+    if not chunks:
+        sys.exit("    No functions found - check the --repo path.")
 
     print("[2] Building vector store...")
     collection, vectorizer = build_vector_store(chunks)
+    top_k = min(top_k, len(chunks))
 
     print(f"[3] Reviewing {target} ...")
     with open(target) as f:
         new_code = f.read()
-    retrieved = retrieve_similar(collection, vectorizer, new_code, top_k=3)
+    retrieved = retrieve_similar(collection, vectorizer, new_code, top_k=top_k)
     print("    Retrieved references:")
     for rid in retrieved["ids"][0]:
         print(f"      - {rid}")

@@ -20,6 +20,7 @@ how to properly evaluate LLM-generated comments once that step is added.
 
 import ast
 import glob
+import os
 import re
 
 from pathlib import Path
@@ -41,27 +42,76 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
     return [[float(x) for x in vec] for vec in _embedder(texts)]
 
 
+SKIP_DIRS = {"venv", "env", "node_modules", "__pycache__", "site-packages", "build", "dist"}
+
+
 def extract_function_chunks(filepath: str) -> list[dict]:
-    """Parse a Python file and extract each top-level function as a chunk."""
-    with open(filepath, "r") as f:
+    """Parse a Python file and extract functions and class methods as chunks."""
+    with open(filepath, "r", encoding="utf-8", errors="replace") as f:
         source = f.read()
 
     tree = ast.parse(source)
     chunks = []
+
+    def add(node, qualname):
+        chunks.append(
+            {
+                "id": f"{filepath}::{qualname}",
+                "file": filepath,
+                "function_name": node.name,
+                "line": node.lineno,
+                "source": ast.get_source_segment(source, node),
+                "has_docstring": ast.get_docstring(node) is not None,
+                "is_snake_case": bool(re.fullmatch(r"[a-z_][a-z0-9_]*", node.name)),
+            }
+        )
+
+    funcs = (ast.FunctionDef, ast.AsyncFunctionDef)
     for node in tree.body:
-        if isinstance(node, ast.FunctionDef):
-            chunk_source = ast.get_source_segment(source, node)
-            chunks.append(
-                {
-                    "id": f"{filepath}::{node.name}",
-                    "file": filepath,
-                    "function_name": node.name,
-                    "source": chunk_source,
-                    "has_docstring": ast.get_docstring(node) is not None,
-                    "is_snake_case": bool(re.fullmatch(r"[a-z_][a-z0-9_]*", node.name)),
-                }
-            )
+        if isinstance(node, funcs):
+            add(node, node.name)
+        elif isinstance(node, ast.ClassDef):
+            for sub in node.body:
+                if isinstance(sub, funcs):
+                    add(sub, f"{node.name}.{sub.name}")
     return chunks
+
+
+def collect_repo_chunks(root: str, exclude: str | None = None):
+    """Walk a folder, extract chunks from every .py file.
+
+    - skips virtual-env / build folders and hidden folders (.git, .venv, ...)
+    - skips `exclude` (the file under review, so it can't cite itself)
+    - skips files that fail to parse instead of crashing
+    Returns (chunks, number_of_files_read, list_of_skipped_files).
+    """
+    exclude_path = os.path.abspath(exclude) if exclude else None
+    chunks, files_read, skipped = [], 0, []
+
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = sorted(
+            d for d in dirnames if d not in SKIP_DIRS and not d.startswith(".")
+        )
+        for name in sorted(filenames):
+            if not name.endswith(".py"):
+                continue
+            path = os.path.join(dirpath, name)
+            if exclude_path and os.path.abspath(path) == exclude_path:
+                continue
+            try:
+                chunks.extend(extract_function_chunks(path))
+                files_read += 1
+            except (SyntaxError, ValueError):
+                skipped.append(path)
+
+    # Chroma needs unique ids: two functions with the same name in one file
+    seen = {}
+    for c in chunks:
+        n = seen.get(c["id"], 0)
+        seen[c["id"]] = n + 1
+        if n:
+            c["id"] = f'{c["id"]}#{c["line"]}'
+    return chunks, files_read, skipped
 
 
 def build_vector_store(chunks: list[dict]):
@@ -81,6 +131,7 @@ def build_vector_store(chunks: list[dict]):
             {
                 "function_name": c["function_name"],
                 "file": c["file"],
+                "line": c["line"],
                 "has_docstring": c["has_docstring"],
                 "is_snake_case": c["is_snake_case"],
             }
