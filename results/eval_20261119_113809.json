@@ -1,0 +1,177 @@
+{
+  "repo": "E:\\Documents\\Financial-Market-Risk-Analysis",
+  "cases": "heldout_cases",
+  "prompt": "v2",
+  "top_k": 5,
+  "mock": false,
+  "codelens": {
+    "recall": "6/6 = 100%",
+    "comments_on_deviant": 6,
+    "comments_matching_a_seeded_violation": 6,
+    "conformant_files_flagged": "0/4 = 0%",
+    "comments_on_conformant": 0
+  },
+  "baseline": null,
+  "citation_validity": [
+    6,
+    6
+  ],
+  "rows": [
+    {
+      "file": "conformant_h1.py",
+      "expected": [],
+      "refs": [
+        "E:/Documents/Financial-Market-Risk-Analysis/src/metrics.py::rolling_entropy",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/regime_detection.py::detect_market_regime",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/metrics.py::rolling_advanced_entropy",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/regime_detection.py::calculate_market_breadth",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/bubble.py::detect_regime"
+      ],
+      "codelens_comments": [],
+      "codelens_dropped": [],
+      "baseline_comments": []
+    },
+    {
+      "file": "conformant_h2.py",
+      "expected": [],
+      "refs": [
+        "E:/Documents/Financial-Market-Risk-Analysis/src/regime_detection.py::detect_market_regime",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/risk_profiler.py::calculate_risk_metrics",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/regime_detection.py::calculate_market_breadth",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/bubble.py::bubble_risk_score",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/bubble.py::detect_regime"
+      ],
+      "codelens_comments": [],
+      "codelens_dropped": [],
+      "baseline_comments": []
+    },
+    {
+      "file": "conformant_h3.py",
+      "expected": [],
+      "refs": [
+        "E:/Documents/Financial-Market-Risk-Analysis/src/diagnostics.py::check_api_health",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/diagnostics.py::check_db_health",
+        "E:/Documents/Financial-Market-Risk-Analysis/app.py::run_startup_diagnostics",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/diagnostics.py::get_system_report",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/diagnostics.py::check_dependencies"
+      ],
+      "codelens_comments": [],
+      "codelens_dropped": [],
+      "baseline_comments": []
+    },
+    {
+      "file": "conformant_h4.py",
+      "expected": [],
+      "refs": [
+        "E:/Documents/Financial-Market-Risk-Analysis/src/forecasting.py::forecast_garch_volatility",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/forecasting.py::forecast_generic_timeseries",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/forecasting.py::forecast_volatility",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/forecasting.py::forecast_hybrid_volatility",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/metrics.py::calculate_garch_volatility"
+      ],
+      "codelens_comments": [],
+      "codelens_dropped": [],
+      "baseline_comments": []
+    },
+    {
+      "file": "deviant_h1.py",
+      "expected": [
+        "function_naming",
+        "param_naming"
+      ],
+      "refs": [
+        "E:/Documents/Financial-Market-Risk-Analysis/src/risk_profiler.py::calculate_risk_metrics",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/metrics.py::calculate_log_returns",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/validation.py::evaluate_bubble_model",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/advanced_models.py::calculate_hybrid_garch_svr",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/advanced_models.py::calculate_gjr_garch_volatility"
+      ],
+      "codelens_comments": [
+        {
+          "issue": "Function name style",
+          "comment": "The new function is named `computeBeta` (camelCase) whereas reference functions use snake_case names like `calculate_risk_metrics`.",
+          "cited_source": "E:/Documents/Financial-Market-Risk-Analysis/src/risk_profiler.py::calculate_risk_metrics"
+        },
+        {
+          "issue": "Parameter name style",
+          "comment": "Parameters `AssetReturns` and `MarketReturns` are PascalCase, while reference functions use snake_case parameter names such as `prices` and `returns`.",
+          "cited_source": "E:/Documents/Financial-Market-Risk-Analysis/src/risk_profiler.py::calculate_risk_metrics"
+        }
+      ],
+      "codelens_dropped": [],
+      "baseline_comments": []
+    },
+    {
+      "file": "deviant_h2.py",
+      "expected": [
+        "raises_exception"
+      ],
+      "refs": [
+        "E:/Documents/Financial-Market-Risk-Analysis/src/risk_profiler.py::calculate_risk_metrics",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/regime_detection.py::calculate_market_breadth",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/bubble.py::bubble_risk_score",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/regime_detection.py::detect_market_regime",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/bubble.py::detect_regime"
+      ],
+      "codelens_comments": [
+        {
+          "issue": "Exception raising vs default return",
+          "comment": "Reference functions handle edge cases by returning default values (e.g., bubble_risk_score returns a default series) rather than raising exceptions; this function raises a ValueError, violating that convention.",
+          "cited_source": "E:/Documents/Financial-Market-Risk-Analysis/src/bubble.py::bubble_risk_score"
+        }
+      ],
+      "codelens_dropped": [],
+      "baseline_comments": []
+    },
+    {
+      "file": "deviant_h3.py",
+      "expected": [
+        "vague_params"
+      ],
+      "refs": [
+        "E:/Documents/Financial-Market-Risk-Analysis/src/metrics.py::calculate_log_returns",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/risk_profiler.py::calculate_risk_metrics",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/metrics.py::calculate_garch_volatility",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/advanced_models.py::calculate_hybrid_garch_svr",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/metrics.py::calculate_ewma_volatility"
+      ],
+      "codelens_comments": [
+        {
+          "issue": "Vague parameter names",
+          "comment": "The reference functions use descriptive parameter names (e.g., prices, returns, benchmark_returns) rather than single\u2011letter names, but the new function uses generic single\u2011letter parameters x and y.",
+          "cited_source": "E:/Documents/Financial-Market-Risk-Analysis/src/risk_profiler.py::calculate_risk_metrics"
+        }
+      ],
+      "codelens_dropped": [],
+      "baseline_comments": []
+    },
+    {
+      "file": "deviant_h4.py",
+      "expected": [
+        "bare_except",
+        "string_format"
+      ],
+      "refs": [
+        "E:/Documents/Financial-Market-Risk-Analysis/src/live_data.py::get_live_ticker_stats",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/database.py::load_from_db",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/data_loader.py::load_and_sync_data",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/live_data.py::get_intraday_data",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/data_loader.py::fetch_data"
+      ],
+      "codelens_comments": [
+        {
+          "issue": "bare except",
+          "comment": "The function uses a bare except clause, whereas the majority of reference functions catch specific Exception objects (e.g., except Exception as e).",
+          "cited_source": "E:/Documents/Financial-Market-Risk-Analysis/src/live_data.py::get_live_ticker_stats"
+        },
+        {
+          "issue": "non-f-string error message",
+          "comment": "Error messages are formatted with str.format instead of f-strings; reference functions consistently use f-strings for printing errors.",
+          "cited_source": "E:/Documents/Financial-Market-Risk-Analysis/src/database.py::load_from_db"
+        }
+      ],
+      "codelens_dropped": [],
+      "baseline_comments": []
+    }
+  ]
+}

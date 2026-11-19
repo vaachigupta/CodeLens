@@ -1,0 +1,329 @@
+{
+  "repo": "E:\\Documents\\Financial-Market-Risk-Analysis",
+  "cases": "test_cases",
+  "prompt": "v1",
+  "top_k": 5,
+  "mock": false,
+  "codelens": {
+    "recall": "9/14 = 64%",
+    "comments_on_deviant": 13,
+    "comments_matching_a_seeded_violation": 9,
+    "conformant_files_flagged": "0/5 = 0%",
+    "comments_on_conformant": 0
+  },
+  "baseline": null,
+  "citation_validity": [
+    13,
+    13
+  ],
+  "rows": [
+    {
+      "file": "conformant_1.py",
+      "expected": [],
+      "refs": [
+        "E:/Documents/Financial-Market-Risk-Analysis/src/metrics.py::rolling_entropy",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/bubble.py::bubble_risk_score",
+        "E:/Documents/Financial-Market-Risk-Analysis/app.py::calculate_advanced_entropy_cached",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/bubble.py::detect_regime",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/metrics.py::calculate_ewma_volatility"
+      ],
+      "codelens_comments": [],
+      "codelens_dropped": [],
+      "baseline_comments": []
+    },
+    {
+      "file": "conformant_2.py",
+      "expected": [],
+      "refs": [
+        "E:/Documents/Financial-Market-Risk-Analysis/src/metrics.py::calculate_garch_volatility",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/advanced_models.py::calculate_gjr_garch_volatility",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/risk_profiler.py::calculate_risk_metrics",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/forecasting.py::forecast_garch_volatility",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/advanced_models.py::calculate_hybrid_garch_svr"
+      ],
+      "codelens_comments": [],
+      "codelens_dropped": [],
+      "baseline_comments": []
+    },
+    {
+      "file": "conformant_3.py",
+      "expected": [],
+      "refs": [
+        "E:/Documents/Financial-Market-Risk-Analysis/src/regime_detection.py::calculate_market_breadth",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/risk_profiler.py::calculate_risk_metrics",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/bubble.py::bubble_risk_score",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/metrics.py::calculate_log_returns",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/validation.py::evaluate_bubble_model"
+      ],
+      "codelens_comments": [],
+      "codelens_dropped": [],
+      "baseline_comments": []
+    },
+    {
+      "file": "conformant_4.py",
+      "expected": [],
+      "refs": [
+        "E:/Documents/Financial-Market-Risk-Analysis/src/diagnostics.py::check_db_health",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/diagnostics.py::check_api_health",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/validation.py::run_bulk_validation",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/data_loader.py::load_and_sync_data",
+        "E:/Documents/Financial-Market-Risk-Analysis/app.py::run_startup_diagnostics"
+      ],
+      "codelens_comments": [],
+      "codelens_dropped": [],
+      "baseline_comments": []
+    },
+    {
+      "file": "conformant_5.py",
+      "expected": [],
+      "refs": [
+        "E:/Documents/Financial-Market-Risk-Analysis/src/forecasting.py::forecast_generic_timeseries",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/forecasting.py::forecast_garch_volatility",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/forecasting.py::forecast_volatility",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/forecasting.py::forecast_hybrid_volatility",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/metrics.py::calculate_garch_volatility"
+      ],
+      "codelens_comments": [],
+      "codelens_dropped": [],
+      "baseline_comments": []
+    },
+    {
+      "file": "deviant_1.py",
+      "expected": [
+        "function_naming",
+        "param_naming"
+      ],
+      "refs": [
+        "E:/Documents/Financial-Market-Risk-Analysis/src/metrics.py::rolling_entropy",
+        "E:/Documents/Financial-Market-Risk-Analysis/app.py::calculate_advanced_entropy_cached",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/bubble.py::bubble_risk_score",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/metrics.py::rolling_advanced_entropy",
+        "E:/Documents/Financial-Market-Risk-Analysis/app.py::navigate_to"
+      ],
+      "codelens_comments": [
+        {
+          "issue": "Function name not snake_case",
+          "comment": "The function name uses camelCase (computeRollingVar) whereas reference functions like rolling_entropy use snake_case naming.",
+          "cited_source": "E:/Documents/Financial-Market-Risk-Analysis/src/metrics.py::rolling_entropy"
+        },
+        {
+          "issue": "Parameter names not lowercase with underscores",
+          "comment": "Parameters Returns and Window are capitalized; reference functions use lowercase names such as series, window, method.",
+          "cited_source": "E:/Documents/Financial-Market-Risk-Analysis/src/metrics.py::rolling_entropy"
+        }
+      ],
+      "codelens_dropped": [],
+      "baseline_comments": []
+    },
+    {
+      "file": "deviant_2.py",
+      "expected": [
+        "function_naming"
+      ],
+      "refs": [
+        "E:/Documents/Financial-Market-Risk-Analysis/src/metrics.py::calculate_ewma_volatility",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/metrics.py::calculate_garch_volatility",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/advanced_models.py::get_best_volatility_model",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/advanced_models.py::calculate_gjr_garch_volatility",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/forecasting.py::forecast_hybrid_volatility"
+      ],
+      "codelens_comments": [
+        {
+          "issue": "Function name style",
+          "comment": "The function name uses camelCase `calculateEwmaVolatility` instead of the snake_case convention used throughout the codebase (e.g., `calculate_ewma_volatility`).",
+          "cited_source": "E:/Documents/Financial-Market-Risk-Analysis/src/metrics.py::calculate_ewma_volatility"
+        },
+        {
+          "issue": "Missing annualization factor",
+          "comment": "The function omits the `annualize_factor` parameter and does not scale the volatility by it, unlike the reference implementation which includes `annualize_factor=np.sqrt(252)` and multiplies the result.",
+          "cited_source": "E:/Documents/Financial-Market-Risk-Analysis/src/metrics.py::calculate_ewma_volatility"
+        }
+      ],
+      "codelens_dropped": [],
+      "baseline_comments": []
+    },
+    {
+      "file": "deviant_3.py",
+      "expected": [
+        "param_naming"
+      ],
+      "refs": [
+        "E:/Documents/Financial-Market-Risk-Analysis/src/risk_profiler.py::calculate_risk_metrics",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/advanced_models.py::get_best_volatility_model",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/metrics.py::calculate_ewma_volatility",
+        "E:/Documents/Financial-Market-Risk-Analysis/app.py::select_best_volatility_model_cached",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/bubble.py::bubble_risk_score"
+      ],
+      "codelens_comments": [
+        {
+          "issue": "Parameter naming",
+          "comment": "Parameter name 'ReturnsSeries' uses capital letters; convention is lowercase with underscores as seen in reference functions (e.g., 'returns' in calculate_ewma_volatility).",
+          "cited_source": "E:/Documents/Financial-Market-Risk-Analysis/src/metrics.py::calculate_ewma_volatility"
+        }
+      ],
+      "codelens_dropped": [],
+      "baseline_comments": []
+    },
+    {
+      "file": "deviant_4.py",
+      "expected": [
+        "vague_params"
+      ],
+      "refs": [
+        "E:/Documents/Financial-Market-Risk-Analysis/src/risk_profiler.py::calculate_risk_metrics",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/bubble.py::bubble_risk_score",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/metrics.py::calculate_ewma_volatility",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/regime_detection.py::calculate_market_breadth",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/advanced_models.py::get_best_volatility_model"
+      ],
+      "codelens_comments": [
+        {
+          "issue": "Non-descriptive parameter names",
+          "comment": "The parameters `r` and `f` are single-letter and do not convey their purpose; reference functions use descriptive names like `prices` and `returns`.",
+          "cited_source": "E:/Documents/Financial-Market-Risk-Analysis/src/risk_profiler.py::calculate_risk_metrics"
+        }
+      ],
+      "codelens_dropped": [],
+      "baseline_comments": []
+    },
+    {
+      "file": "deviant_5.py",
+      "expected": [
+        "raises_exception"
+      ],
+      "refs": [
+        "E:/Documents/Financial-Market-Risk-Analysis/src/risk_profiler.py::calculate_risk_metrics",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/regime_detection.py::calculate_market_breadth",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/regime_detection.py::detect_market_regime",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/bubble.py::bubble_risk_score",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/bubble.py::detect_regime"
+      ],
+      "codelens_comments": [
+        {
+          "issue": "Raises exception on empty input instead of handling gracefully",
+          "comment": "Reference functions like calculate_market_breadth check for empty inputs and return an empty Series rather than raising an error, so raising ValueError deviates from the established pattern",
+          "cited_source": "E:/Documents/Financial-Market-Risk-Analysis/src/regime_detection.py::calculate_market_breadth"
+        }
+      ],
+      "codelens_dropped": [],
+      "baseline_comments": []
+    },
+    {
+      "file": "deviant_6.py",
+      "expected": [
+        "bare_except"
+      ],
+      "refs": [
+        "E:/Documents/Financial-Market-Risk-Analysis/src/database.py::get_latest_date",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/data_loader.py::load_and_sync_data",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/live_data.py::get_intraday_data",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/live_data.py::get_live_ticker_stats",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/risk_profiler.py::calculate_risk_metrics"
+      ],
+      "codelens_comments": [
+        {
+          "issue": "Bare except without logging",
+          "comment": "The function catches all exceptions with a bare except and returns silently, whereas reference functions catch Exception as e and print an informative error message (e.g., in get_intraday_data).",
+          "cited_source": "E:/Documents/Financial-Market-Risk-Analysis/src/live_data.py::get_intraday_data"
+        }
+      ],
+      "codelens_dropped": [],
+      "baseline_comments": []
+    },
+    {
+      "file": "deviant_7.py",
+      "expected": [
+        "logging_module"
+      ],
+      "refs": [
+        "E:/Documents/Financial-Market-Risk-Analysis/src/diagnostics.py::check_db_health",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/data_loader.py::load_and_sync_data",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/diagnostics.py::check_api_health",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/validation.py::run_bulk_validation",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/metrics.py::calculate_log_returns"
+      ],
+      "codelens_comments": [
+        {
+          "issue": "Return format deviates from health\u2011check convention",
+          "comment": "Health\u2011check functions in the codebase return a dict with 'status' and 'message' keys, but this function returns a plain boolean.",
+          "cited_source": "E:/Documents/Financial-Market-Risk-Analysis/src/diagnostics.py::check_db_health"
+        },
+        {
+          "issue": "Missing exception handling and error message dict",
+          "comment": "Other health\u2011check functions catch generic Exception and return a dict containing an error message; this function lacks any try/except and does not provide a structured error response.",
+          "cited_source": "E:/Documents/Financial-Market-Risk-Analysis/src/diagnostics.py::check_api_health"
+        }
+      ],
+      "codelens_dropped": [],
+      "baseline_comments": []
+    },
+    {
+      "file": "deviant_8.py",
+      "expected": [
+        "string_format"
+      ],
+      "refs": [
+        "E:/Documents/Financial-Market-Risk-Analysis/app.py::select_best_volatility_model_cached",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/forecasting.py::forecast_volatility",
+        "E:/Documents/Financial-Market-Risk-Analysis/app.py::format_ticker",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/advanced_models.py::get_best_volatility_model",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/diagnostics.py::get_system_report"
+      ],
+      "codelens_comments": [
+        {
+          "issue": "Unexpected side\u2011effect (print) instead of returning data",
+          "comment": "Reference functions return values without printing; this function prints a message, deviating from that convention",
+          "cited_source": "E:/Documents/Financial-Market-Risk-Analysis/src/advanced_models.py::get_best_volatility_model"
+        }
+      ],
+      "codelens_dropped": [],
+      "baseline_comments": []
+    },
+    {
+      "file": "deviant_9.py",
+      "expected": [
+        "import_star"
+      ],
+      "refs": [
+        "E:/Documents/Financial-Market-Risk-Analysis/src/metrics.py::calculate_ewma_volatility",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/forecasting.py::forecast_volatility",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/risk_profiler.py::calculate_risk_metrics",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/metrics.py::calculate_garch_volatility",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/advanced_models.py::get_best_volatility_model"
+      ],
+      "codelens_comments": [],
+      "codelens_dropped": [],
+      "baseline_comments": []
+    },
+    {
+      "file": "deviant_10.py",
+      "expected": [
+        "function_naming",
+        "param_naming",
+        "vague_params",
+        "raises_exception"
+      ],
+      "refs": [
+        "E:/Documents/Financial-Market-Risk-Analysis/src/bubble.py::detect_regime",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/bubble.py::bubble_risk_score",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/live_data.py::get_live_ticker_stats",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/validation.py::run_bulk_validation",
+        "E:/Documents/Financial-Market-Risk-Analysis/app.py::format_ticker"
+      ],
+      "codelens_comments": [
+        {
+          "issue": "Function name should be snake_case",
+          "comment": "The function is named GetVolatility, but reference functions like detect_regime use snake_case naming.",
+          "cited_source": "E:/Documents/Financial-Market-Risk-Analysis/src/bubble.py::detect_regime"
+        },
+        {
+          "issue": "Parameter names should be snake_case",
+          "comment": "Parameters Ticker and w are capitalized, whereas reference functions use lowercase names such as price_series and short_window.",
+          "cited_source": "E:/Documents/Financial-Market-Risk-Analysis/src/bubble.py::detect_regime"
+        }
+      ],
+      "codelens_dropped": [],
+      "baseline_comments": []
+    }
+  ]
+}

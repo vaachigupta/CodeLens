@@ -1,0 +1,415 @@
+{
+  "repo": "E:\\Documents\\Financial-Market-Risk-Analysis",
+  "cases": "heldout_cases",
+  "prompt": "v1",
+  "top_k": 5,
+  "mock": false,
+  "codelens": {
+    "recall": "6/6 = 100%",
+    "comments_on_deviant": 8,
+    "comments_matching_a_seeded_violation": 6,
+    "conformant_files_flagged": "2/4 = 50%",
+    "comments_on_conformant": 4
+  },
+  "baseline": {
+    "recall": "3/6 = 50%",
+    "comments_on_deviant": 24,
+    "comments_matching_a_seeded_violation": 3,
+    "conformant_files_flagged": "4/4 = 100%",
+    "comments_on_conformant": 24
+  },
+  "citation_validity": [
+    12,
+    12
+  ],
+  "rows": [
+    {
+      "file": "conformant_h1.py",
+      "expected": [],
+      "refs": [
+        "E:/Documents/Financial-Market-Risk-Analysis/src/metrics.py::rolling_entropy",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/regime_detection.py::detect_market_regime",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/metrics.py::rolling_advanced_entropy",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/regime_detection.py::calculate_market_breadth",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/bubble.py::detect_regime"
+      ],
+      "codelens_comments": [],
+      "codelens_dropped": [],
+      "baseline_comments": [
+        {
+          "issue": "Missing imports",
+          "comment": "The function uses pandas (pd) and numpy (np) but does not import them, causing a NameError at runtime."
+        },
+        {
+          "issue": "Assumes pandas Series input",
+          "comment": "The code accesses returns.index, which fails if returns is a NumPy array or list; input validation or conversion to a Series is needed."
+        },
+        {
+          "issue": "Inconsistent handling of short series",
+          "comment": "When len(returns) < window the function returns a Series of NaNs with the original index, but the length may differ from the expected rolling output; consider returning an empty Series or handling this case consistently."
+        },
+        {
+          "issue": "Low min_periods for skew",
+          "comment": "Using min_periods=5 for a 63\u2011day window may produce unreliable skew estimates; the default should likely be the full window or a higher threshold."
+        },
+        {
+          "issue": "No docstring or type hints",
+          "comment": "Adding a docstring and type annotations would improve readability and usability of the function."
+        },
+        {
+          "issue": "Potential performance impact",
+          "comment": "Calling .rolling().skew() on large datasets can be expensive; consider caching or vectorized alternatives if performance is critical."
+        }
+      ]
+    },
+    {
+      "file": "conformant_h2.py",
+      "expected": [],
+      "refs": [
+        "E:/Documents/Financial-Market-Risk-Analysis/src/regime_detection.py::detect_market_regime",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/risk_profiler.py::calculate_risk_metrics",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/regime_detection.py::calculate_market_breadth",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/bubble.py::bubble_risk_score",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/bubble.py::detect_regime"
+      ],
+      "codelens_comments": [
+        {
+          "issue": "Input emptiness check",
+          "comment": "Reference functions check for empty DataFrames/Series using the .empty attribute (e.g., calculate_market_breadth), but the new function uses len(prices) == 0, deviating from that convention.",
+          "cited_source": "E:/Documents/Financial-Market-Risk-Analysis/src/regime_detection.py::calculate_market_breadth"
+        }
+      ],
+      "codelens_dropped": [],
+      "baseline_comments": [
+        {
+          "issue": "Missing import",
+          "comment": "The function uses pandas (pd) but does not import pandas, causing a NameError."
+        },
+        {
+          "issue": "Input type assumptions",
+          "comment": "It assumes 'prices' is a pandas Series; if a list or NumPy array is passed, .cummax() will fail. Convert or validate the input type."
+        },
+        {
+          "issue": "Division by zero",
+          "comment": "If any price in 'peak' is zero, the division will raise a ZeroDivisionError or produce infinities; handle zero peaks explicitly."
+        },
+        {
+          "issue": "No documentation",
+          "comment": "The function lacks a docstring explaining its purpose, parameters, and return value."
+        },
+        {
+          "issue": "Edge case handling",
+          "comment": "Returning an empty Series when prices is None or empty is fine, but the dtype should match the expected output (e.g., float64) and the Series should be explicitly created with pd.Series([], dtype=float)."
+        }
+      ]
+    },
+    {
+      "file": "conformant_h3.py",
+      "expected": [],
+      "refs": [
+        "E:/Documents/Financial-Market-Risk-Analysis/src/diagnostics.py::check_api_health",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/diagnostics.py::check_db_health",
+        "E:/Documents/Financial-Market-Risk-Analysis/app.py::run_startup_diagnostics",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/diagnostics.py::get_system_report",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/diagnostics.py::check_dependencies"
+      ],
+      "codelens_comments": [],
+      "codelens_dropped": [],
+      "baseline_comments": [
+        {
+          "issue": "Missing import",
+          "comment": "The function uses os but does not import the os module, causing a NameError."
+        },
+        {
+          "issue": "Broad exception handling",
+          "comment": "Catching all exceptions masks specific errors; it's better to catch expected exceptions like OSError."
+        },
+        {
+          "issue": "No docstring",
+          "comment": "The function lacks a docstring, making its purpose and parameters unclear to users."
+        },
+        {
+          "issue": "Counts directories as files",
+          "comment": "os.listdir returns both files and subdirectories; the count may be misleading if the cache contains subfolders."
+        },
+        {
+          "issue": "Potential race condition",
+          "comment": "The directory contents could change between the existence check and listing, leading to inaccurate results."
+        },
+        {
+          "issue": "Hard\u2011coded status strings",
+          "comment": "Returning raw strings ('Warning', 'Healthy', 'Error') couples callers to exact values; consider using an enum or constants."
+        }
+      ]
+    },
+    {
+      "file": "conformant_h4.py",
+      "expected": [],
+      "refs": [
+        "E:/Documents/Financial-Market-Risk-Analysis/src/forecasting.py::forecast_garch_volatility",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/forecasting.py::forecast_generic_timeseries",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/forecasting.py::forecast_volatility",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/forecasting.py::forecast_hybrid_volatility",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/metrics.py::calculate_garch_volatility"
+      ],
+      "codelens_comments": [
+        {
+          "issue": "Missing annualize_factor parameter",
+          "comment": "Volatility forecasting functions consistently include an annualize_factor argument (default np.sqrt(252)); this function omits it.",
+          "cited_source": "E:/Documents/Financial-Market-Risk-Analysis/src/forecasting.py::forecast_garch_volatility"
+        },
+        {
+          "issue": "No data length validation",
+          "comment": "Reference implementations check that the cleaned series has at least 50 observations before forecasting and return a NaN series otherwise; this check is absent here.",
+          "cited_source": "E:/Documents/Financial-Market-Risk-Analysis/src/forecasting.py::forecast_garch_volatility"
+        },
+        {
+          "issue": "Inconsistent error fallback series",
+          "comment": "When an exception occurs, reference code returns pd.Series([np.nan] * horizon) (preserving the forecast horizon length and index), whereas this function returns pd.Series(np.nan, index=range(horizon)), which differs in both content and index handling.",
+          "cited_source": "E:/Documents/Financial-Market-Risk-Analysis/src/forecasting.py::forecast_generic_timeseries"
+        }
+      ],
+      "codelens_dropped": [],
+      "baseline_comments": [
+        {
+          "issue": "Missing imports",
+          "comment": "The function uses numpy (np) and pandas (pd) but does not import them, leading to NameError at runtime."
+        },
+        {
+          "issue": "Inconsistent index on error path",
+          "comment": "When an exception occurs the function returns a Series with a RangeIndex, whereas the successful path returns a DatetimeIndex, causing downstream inconsistencies."
+        },
+        {
+          "issue": "Potential insufficient data for volatility calculation",
+          "comment": "If the series has fewer than 21 non\u2011NaN observations, .tail(21) will return fewer points, making the volatility estimate unreliable without a check."
+        },
+        {
+          "issue": "Hard\u2011coded annualization factor",
+          "comment": "Using np.sqrt(252) assumes daily returns; the function should either accept the frequency as a parameter or compute it from the index."
+        },
+        {
+          "issue": "Date offset may skip business days incorrectly",
+          "comment": "Adding pd.Timedelta(days=1) to the last date can land on a weekend, then pd.bdate_range will start from that weekend date, potentially shifting the forecast dates."
+        },
+        {
+          "issue": "No documentation or type hints",
+          "comment": "Adding a docstring and type annotations would improve readability and usability."
+        },
+        {
+          "issue": "Printing errors instead of proper logging",
+          "comment": "Using print for error handling is not ideal; consider using the logging module or re\u2011raising a custom exception."
+        }
+      ]
+    },
+    {
+      "file": "deviant_h1.py",
+      "expected": [
+        "function_naming",
+        "param_naming"
+      ],
+      "refs": [
+        "E:/Documents/Financial-Market-Risk-Analysis/src/risk_profiler.py::calculate_risk_metrics",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/metrics.py::calculate_log_returns",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/validation.py::evaluate_bubble_model",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/advanced_models.py::calculate_hybrid_garch_svr",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/advanced_models.py::calculate_gjr_garch_volatility"
+      ],
+      "codelens_comments": [
+        {
+          "issue": "Function name should use snake_case",
+          "comment": "The function is named computeBeta using camelCase, whereas reference functions like calculate_risk_metrics use snake_case naming.",
+          "cited_source": "E:/Documents/Financial-Market-Risk-Analysis/src/risk_profiler.py::calculate_risk_metrics"
+        },
+        {
+          "issue": "Parameter names should be snake_case",
+          "comment": "Parameters AssetReturns and MarketReturns use PascalCase; reference functions use lowercase snake_case such as returns_series and benchmark_returns.",
+          "cited_source": "E:/Documents/Financial-Market-Risk-Analysis/src/advanced_models.py::calculate_hybrid_garch_svr"
+        }
+      ],
+      "codelens_dropped": [],
+      "baseline_comments": [
+        {
+          "issue": "Missing imports",
+          "comment": "The function uses np.nan and pandas methods but does not import numpy or pandas."
+        },
+        {
+          "issue": "Naming convention",
+          "comment": "Function name should follow snake_case (e.g., compute_beta) per PEP8."
+        },
+        {
+          "issue": "No input validation",
+          "comment": "The code assumes AssetReturns and MarketReturns are compatible pandas Series; mismatched lengths or non\u2011Series inputs will raise errors."
+        },
+        {
+          "issue": "Division by zero risk",
+          "comment": "If MarketReturns.var() is zero, a ZeroDivisionError occurs; should handle this case."
+        },
+        {
+          "issue": "No handling of NaNs in data",
+          "comment": "NaN values in the input series can affect cov and var calculations; consider cleaning or using skipna options."
+        },
+        {
+          "issue": "Lack of documentation",
+          "comment": "The function lacks a docstring and type hints, making its purpose and expected inputs unclear."
+        }
+      ]
+    },
+    {
+      "file": "deviant_h2.py",
+      "expected": [
+        "raises_exception"
+      ],
+      "refs": [
+        "E:/Documents/Financial-Market-Risk-Analysis/src/risk_profiler.py::calculate_risk_metrics",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/regime_detection.py::calculate_market_breadth",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/bubble.py::bubble_risk_score",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/regime_detection.py::detect_market_regime",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/bubble.py::detect_regime"
+      ],
+      "codelens_comments": [
+        {
+          "issue": "Parameter order deviates from established convention",
+          "comment": "Reference functions place price-related data first (e.g., calculate_risk_metrics(prices, returns, ...)), but the new function orders returns before prices.",
+          "cited_source": "E:/Documents/Financial-Market-Risk-Analysis/src/risk_profiler.py::calculate_risk_metrics"
+        },
+        {
+          "issue": "Raises exception instead of graceful handling of empty input",
+          "comment": "Other functions handle empty inputs by returning empty structures rather than raising (e.g., calculate_market_breadth returns an empty Series when df_prices.empty). Raising ValueError is inconsistent with this pattern.",
+          "cited_source": "E:/Documents/Financial-Market-Risk-Analysis/src/regime_detection.py::calculate_market_breadth"
+        }
+      ],
+      "codelens_dropped": [],
+      "baseline_comments": [
+        {
+          "issue": "Missing input validation for prices",
+          "comment": "The function checks that returns is non\u2011empty but does not verify that prices is non\u2011empty or that its length matches returns, which could cause misaligned calculations or runtime errors."
+        },
+        {
+          "issue": "Assumes pandas objects",
+          "comment": "Methods like .cummax() and .min() are used without ensuring that prices and returns are pandas Series/DataFrames; passing a list or NumPy array would raise an AttributeError."
+        },
+        {
+          "issue": "Potential division by zero",
+          "comment": "If max_dd evaluates to 0 (e.g., no drawdown), the function will raise a ZeroDivisionError; it should handle this case explicitly."
+        },
+        {
+          "issue": "Hard\u2011coded trading days",
+          "comment": "The factor 252 is hard\u2011coded, making the function inflexible for non\u2011daily data or different market calendars; consider making it a parameter."
+        },
+        {
+          "issue": "Lack of documentation and type hints",
+          "comment": "No docstring or type annotations are provided, which reduces readability and makes correct usage unclear."
+        },
+        {
+          "issue": "No handling of NaN values",
+          "comment": "If returns or prices contain NaNs, the mean and drawdown calculations may propagate NaNs; the function should clean or warn about missing data."
+        }
+      ]
+    },
+    {
+      "file": "deviant_h3.py",
+      "expected": [
+        "vague_params"
+      ],
+      "refs": [
+        "E:/Documents/Financial-Market-Risk-Analysis/src/metrics.py::calculate_log_returns",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/risk_profiler.py::calculate_risk_metrics",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/metrics.py::calculate_garch_volatility",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/advanced_models.py::calculate_hybrid_garch_svr",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/metrics.py::calculate_ewma_volatility"
+      ],
+      "codelens_comments": [
+        {
+          "issue": "Non-descriptive parameter names",
+          "comment": "The function uses generic names 'x' and 'y' instead of descriptive identifiers as seen in reference functions like 'returns_series' in calculate_garch_volatility.",
+          "cited_source": "E:/Documents/Financial-Market-Risk-Analysis/src/metrics.py::calculate_garch_volatility"
+        },
+        {
+          "issue": "Inconsistent return type",
+          "comment": "When the input length is insufficient the function returns a scalar np.nan, whereas reference functions that return collections (e.g., calculate_risk_metrics) always return a dict, never a scalar, leading to type inconsistency.",
+          "cited_source": "E:/Documents/Financial-Market-Risk-Analysis/src/risk_profiler.py::calculate_risk_metrics"
+        }
+      ],
+      "codelens_dropped": [],
+      "baseline_comments": [
+        {
+          "issue": "Missing import",
+          "comment": "numpy (np) is used but not imported."
+        },
+        {
+          "issue": "Inconsistent return type",
+          "comment": "Function returns np.nan (float) or a dict, leading to unpredictable caller behavior."
+        },
+        {
+          "issue": "No input validation",
+          "comment": "Assumes x and y are array-like and that y has sufficient length; y is never checked."
+        },
+        {
+          "issue": "Lack of documentation",
+          "comment": "No docstring describing the function, its parameters, or return value."
+        },
+        {
+          "issue": "Unspecified std parameters",
+          "comment": "Calling .std() without ddof may give population std when sample std is intended."
+        },
+        {
+          "issue": "Missing type hints",
+          "comment": "Absence of type annotations reduces readability and hampers static analysis."
+        }
+      ]
+    },
+    {
+      "file": "deviant_h4.py",
+      "expected": [
+        "bare_except",
+        "string_format"
+      ],
+      "refs": [
+        "E:/Documents/Financial-Market-Risk-Analysis/src/live_data.py::get_live_ticker_stats",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/database.py::load_from_db",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/data_loader.py::load_and_sync_data",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/live_data.py::get_intraday_data",
+        "E:/Documents/Financial-Market-Risk-Analysis/src/data_loader.py::fetch_data"
+      ],
+      "codelens_comments": [
+        {
+          "issue": "Broad except clause",
+          "comment": "The function catches a bare except instead of catching Exception as e, which deviates from the explicit exception handling used elsewhere.",
+          "cited_source": "E:/Documents/Financial-Market-Risk-Analysis/src/database.py::load_from_db"
+        },
+        {
+          "issue": "Error message format",
+          "comment": "The error message uses .format and omits the exception details, whereas reference functions use f-strings that include the exception variable (e).",
+          "cited_source": "E:/Documents/Financial-Market-Risk-Analysis/src/live_data.py::get_live_ticker_stats"
+        }
+      ],
+      "codelens_dropped": [],
+      "baseline_comments": [
+        {
+          "issue": "Missing imports",
+          "comment": "The function uses yf and pd without importing yfinance and pandas, leading to NameError."
+        },
+        {
+          "issue": "Broad exception handling",
+          "comment": "Catching all exceptions with a bare except hides errors and makes debugging difficult; it should catch specific exceptions."
+        },
+        {
+          "issue": "No logging of exception details",
+          "comment": "The except block only prints a generic message, losing the traceback information that could aid troubleshooting."
+        },
+        {
+          "issue": "Potential KeyError on missing 'Close' column",
+          "comment": "If the downloaded data lacks a 'Close' column, accessing data['Close'] raises a KeyError; use .get('Close') or check column existence."
+        },
+        {
+          "issue": "Returning empty Series without index",
+          "comment": "Returning pd.Series(dtype=float) provides no index, which may cause downstream code to fail when expecting a time-indexed Series."
+        },
+        {
+          "issue": "Lack of type hints and docstring",
+          "comment": "Adding type annotations and a docstring would improve readability and usability of the function."
+        }
+      ]
+    }
+  ]
+}

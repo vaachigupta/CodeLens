@@ -21,6 +21,9 @@ new code
 [Retriever]   most similar functions from the indexed codebase (Chroma, MiniLM embeddings)
    |
    v
+[Redactor]    secrets (API keys, tokens, passwords) in the code and references replaced by <REDACTED:type>
+   |
+   v
 [Prompt]      references + new code, with rules for what counts as a deviation
    |
    v
@@ -45,9 +48,14 @@ The whole thing is one LangChain chain written with the `|` (LCEL) syntax.
 3. **Vector store**: Chroma collection with cosine distance.
 4. **Retrieval** (`chain.py`): `CodebaseRetriever`, a LangChain `BaseRetriever` over the
    Chroma collection. Each function becomes a LangChain `Document`.
-5. **Review** (`chain.py`, `llm_review.py`): a `ChatPromptTemplate` feeds the references and
+5. **Secret redaction** (`redact.py`, called from `chain.py`): before anything is sent to
+   the LLM, the new code and the retrieved references are scanned for API keys, tokens,
+   private keys, passwords in URLs and secret-looking assignments, and each is replaced
+   by `<REDACTED:type>`. The chain's output lists what was redacted, with line numbers
+   and a masked preview (never the secret itself).
+6. **Review** (`chain.py`, `llm_review.py`): a `ChatPromptTemplate` feeds the references and
    the new code to ChatGroq, which replies in JSON.
-6. **Citation check** (`llm_review.py`): comments citing anything outside the retrieved
+7. **Citation check** (`llm_review.py`): comments citing anything outside the retrieved
    set are dropped, which stops the model from inventing sources.
 
 ## Files
@@ -59,6 +67,10 @@ The whole thing is one LangChain chain written with the `|` (LCEL) syntax.
 | `chain.py` | LangChain chain: retriever, prompt, model, parser, validator (plus an offline mock model) |
 | `run_llm.py` | Command line runner for reviewing one file |
 | `evaluate.py` | Evaluation harness: CodeLens versus a no-retrieval baseline |
+| `redact.py` | Secret redaction applied before code reaches the LLM |
+| `retrieval_eval.py` | Evaluates the retrieval stage alone (no LLM, no API key) |
+| `autoencoder_novelty.py` | Small numpy autoencoder that scores how unlike the codebase a function is |
+| `tests/` | Offline tests (`python -m pytest -q`): chunker, citation check, redaction, chain, scoring rules, autoencoder |
 | `test_cases/` | 15 seeded test files and `manifest.json` (what each file contains) |
 | `heldout_cases/` | 8 separate test files and `manifest.json`, kept apart from the development set |
 | `test_cases/archive_v1/` | Original versions of two conformant files that were later rewritten |
@@ -107,6 +119,15 @@ python run_llm.py --mock           # offline plumbing test, no API key needed
 python run_llm.py file.py --plain  # direct Groq call without LangChain, for comparison
 ```
 
+Other tools (none of them need an API key):
+
+```
+python -m pytest -q                      # 21 offline tests
+python redact.py path\to\file.py         # show the code with secrets redacted, and what was found
+python retrieval_eval.py --repo <repo>   # retrieval stage on its own
+python autoencoder_novelty.py --repo <repo> --foreign <other_repo>
+```
+
 `--mock` uses a fake model that cites one real and one made-up source. A correct
 run shows 1 kept comment and 1 dropped comment.
 
@@ -153,25 +174,47 @@ This run used the original conformant files. CodeLens missed three violations:
 `deviant_10`. It commented on two conformant files (`conformant_2`: 1 comment,
 `conformant_5`: 3 comments).
 
-**Results, three later runs** (same day, prompt v1, top-k 5, after the conformant files
-were rewritten; scored with the same rules):
+**Results on the revised development set** (same day, top-k 5, all scored with the same
+rules; `conformant_2`, `conformant_4` and `conformant_5` had been rewritten by then):
 
-| Run | CodeLens recall | Conformant files flagged | Baseline recall | Baseline comments on conformant |
+| Run | Prompt | CodeLens recall | Conformant files flagged | Baseline recall |
 |---|---|---|---|---|
-| `eval_20261118_154643` | 10/14 | 0/5 | 6/14 | 29 |
-| `eval_20261118_155345` | 11/14 | 2/5 | 6/14 | 27 |
-| `eval_20261118_160511` | 11/14 | 0/5 | 4/14 | 30 |
+| `eval_20261118_154643` | v1 | 10/14 | 0/5 | 6/14 |
+| `eval_20261118_155345` | v1 | 11/14 | 2/5 | 6/14 |
+| `eval_20261118_160511` | v1 | 11/14 | 0/5 | 4/14 |
+| `eval_20261119_114808` | v1 | 9/14 | 0/5 | not run |
+| `eval_20261119_115231` | v1 | 12/14 | 0/5 | not run |
+| `eval_20261119_114338` | v2 | 12/14 | 0/5 | not run |
 
-Across these runs CodeLens scored 10 to 11 out of 14, and the baseline 4 to 6 out of 14.
-The baseline flagged all 5 conformant files every time. `deviant_10` (vague parameter
-names, raised exception) was missed in all three runs and `deviant_9` (`import *`) in
-the last two. Which violations are missed changes from run to run, so the same prompt
-does not give the same answer twice.
+With prompt v1 the recall ranged from 9 to 12 out of 14 over five runs, so the
+same prompt does not give the same answer twice. The baseline (same LLM, no
+retrieval) scored 4 to 6 out of 14 and flagged all 5 conformant files in every run it was
+run. Prompt v2 scored 12/14 in its single development run, which is inside the range v1
+produced, so on the development set v2 is not shown to be better on recall. `deviant_7`
+(`logging`) was caught in 2 of the 6 runs and `deviant_8` (`.format()`) in 3 of 6.
 
-**The three runs are not on an identical test set.** `conformant_4.py` was rewritten
-between the second and third run (it returned a bool where the other `check_*`
-functions return a status dict). The drop from 2/5 to 0/5 flagged files in the third
-run is partly that fix and should not be read as the prompt improving.
+**The first two runs in this table used an older `conformant_4.py`.** It was rewritten
+between `eval_20261118_155345` and `eval_20261118_160511` (it returned a bool where the other
+`check_*` functions return a status dict). The drop from 2/5 to 0/5 flagged files from the
+third run on is partly that fix.
+
+**Results on the held-out set** (8 files: 4 conformant, 4 deviant, 6 seeded violations;
+top-k 5; each configuration run once):
+
+| | CodeLens, prompt v1 | CodeLens, prompt v2 | Baseline (no retrieval) |
+|---|---|---|---|
+| Recall of seeded violations | 6/6 | 6/6 | 3/6 |
+| Conformant files wrongly flagged | 2/4 (4 comments) | 0/4 (0 comments) | 4/4 (24 comments) |
+| Comments on deviant files | 8 (6 on target) | 6 (6 on target) | 24 (3 on target) |
+| Citation validity | 12/12 | 6/6 | n/a |
+
+Both prompts caught every seeded violation in the held-out set. Prompt v2 produced no
+comments on conformant files and no off-target comments, where v1 produced 4 comments on
+two conformant files (`conformant_h2`, `conformant_h4`). This is one run each on 8 files,
+so it is an indication and not a proven difference. Some of v1's held-out comments may also
+be legitimate: for example `conformant_h4` omits the `annualize_factor` parameter that the
+repo's `forecast_*` functions take. The held-out files were not edited after the results
+were seen, so this is reported as it came out.
 
 **How scoring works.** "Caught" is decided by keyword rules in `evaluate.py`, so it is
 approximate. Two of those rules (`raises_exception`, `logging_module`) were tightened
@@ -209,12 +252,46 @@ in the table above (11/14 and 5/14).
   prove the function supports the comment.
 - A single run is not conclusive because the model varies between runs (see the range above).
 
-**Held-out set.** `heldout_cases/` holds 8 further files (4 conformant, 4 deviant with
-6 seeded violations: function naming, parameter naming, vague parameters, raising
-instead of returning NaN, bare `except`, `.format()`). It was written separately from
-the development set so that a prompt tuned on `test_cases/` can be checked on files it
-was not tuned on. It is run with `python evaluate.py --repo <repo> --cases heldout_cases`.
-No results from it are reported here.
+**Retrieval on its own.** `retrieval_eval.py` checks the retrieval stage without any LLM.
+A retrieved function counts as relevant if it has the same name family as the new function
+(the first word: `calculate`, `get`, `forecast`, `check`, `load`). It compares MiniLM
+retrieval in Chroma with plain TF-IDF and with chance.
+
+| Test set | Method | Hit@1 | Hit@3 | Hit@5 | Precision@5 |
+|---|---|---|---|---|---|
+| Development (15 files) | MiniLM | 10/15 | 13/15 | 14/15 | 45% |
+| Development (15 files) | TF-IDF | 7/15 | 12/15 | 12/15 | 35% |
+| Held-out (8 files) | MiniLM | 4/8 | 6/8 | 7/8 | 45% |
+| Held-out (8 files) | TF-IDF | 5/8 | 6/8 | 6/8 | 32% |
+
+Chance precision is 21% (development) and 18% (held-out). MiniLM is well above chance and
+at least as good as TF-IDF from k=3; on the held-out set TF-IDF was ahead at k=1 (5/8
+against 4/8). With 15 and 8 files, one file moves a number by 7 to 12 points. Top-k 5 was
+chosen because Hit@5 is higher than Hit@3 on both sets. The ground truth is a naming proxy,
+not a judgement of which function is the best reference. MiniLM matches on what the code does,
+not on how it is named: the camelCase files `computeRollingVar` and `GetVolatility` did not
+retrieve a same-family function first. Retrieval quality did not predict which violations the
+LLM caught: `deviant_10` had all four of its violations caught in the prompt v2 run even though none
+of its retrieved functions share its family.
+
+**Autoencoder novelty score.** `autoencoder_novelty.py` trains a small autoencoder
+(384 -> 16 -> 384, written in numpy, trained with Adam) on the MiniLM embeddings of the
+codebase's functions. A function it reconstructs badly is unlike the codebase. Scores are
+calibrated with 5-fold cross-validation (mean error on training functions 0.00043, on
+held-out folds 0.00195). On `Financial-Market-Risk-Analysis` it separates off-topic code well:
+17 functions from MediSage scored a mean novelty of 0.95 against 0.49 for the repo's own
+functions (AUC 0.96). It does not separate convention violations from conformant files
+(AUC 0.64 on 15 files, within noise), because embeddings capture what code does, not how it is
+styled. It is a standalone script and is not part of the review chain.
+
+**Secret redaction.** `redact.py` is covered by 7 tests, including a chain test that
+checks a secret placed in both the new code and a reference never appears in the prompt
+sent to the model.
+
+**Tests.** 21 offline tests pass (`python -m pytest -q`): the chunker (functions, methods,
+skipped folders and broken files, duplicate names), citation validation (including
+Windows `\` against `/` paths, bad JSON, empty comment lists), redaction, the full chain with
+a fake model, spot checks of the scoring rules, and the autoencoder.
 
 ## Prompt iteration
 
@@ -232,9 +309,9 @@ model not to flag differences in what a function computes, and gives an explicit
 checklist (vague single-letter names, bare `except`, raising versus returning a default,
 message format, string formatting, imports, `logging` versus `print`). Because `v2` was
 written with the development-set mistakes in view, its development-set score would be
-optimistic, which is the reason the held-out set exists. The runs reported above all use
-`v1`. `v2` needs at least 5 retrieved references to be meaningful, so use `--top-k 5`
-(the default in `evaluate.py`; `run_llm.py` defaults to 3).
+optimistic, which is the reason the held-out set exists. The development-set runs
+and the held-out runs above report both versions. `v2` is meant to be used with `--top-k 5` (the default in `evaluate.py`; `run_llm.py`
+defaults to 3).
 
 ## Syllabus coverage in the current build
 
@@ -244,12 +321,24 @@ optimistic, which is the reason the held-out set exists. The runs reported above
 | LangChain (Unit III) | Retriever, prompt template, chat model, parser and validator in `chain.py` |
 | Transformers (Unit III) | MiniLM sentence embeddings used for retrieval, ChatGroq for generation |
 | Explainability (Unit IV) | Every comment cites the existing function it is based on, and citations are validated |
+| Responsible AI (Unit IV) | `redact.py` removes secrets from code before it is sent to an external model |
+| Autoencoders (Unit I) | `autoencoder_novelty.py`: numpy autoencoder on code embeddings, evaluated with cross-validation |
+| Prompt engineering (Unit III) | Prompt v1 against v2, compared on development and held-out sets |
 
 ## Known limits of the current build
 
 - Python only.
 - Scoring is keyword-based, so a comment can be credited or missed by wording alone.
-- The development test files were revised after results were seen (see above).
+- The development test files were revised after results were seen (see above), so they
+  are no longer a clean test. The held-out set was not edited.
+- The test sets are small (15 and 8 files) and prompt v2 was run once on each, so differences
+  of one or two files are not conclusive.
+- Only the seeded violations are scored. A comment that is correct but about something else
+  (for example `deviant_7` returning a bool where the repo's `check_*` functions return a
+  dict) counts as off-target. Whether a "conformant" file is truly conformant is itself a
+  judgement; two of the original ones were not.
+- Citation validity checks that the cited function was retrieved, not that the claim about
+  it is true. A few comments contain small misquotes (for example `Return` for the parameter `Returns`).
 - MiniLM is trained on general text, not code, and reads roughly the first 256 tokens
   of each function.
 - A long file under review is embedded as one block, so retrieval can miss parts of it.

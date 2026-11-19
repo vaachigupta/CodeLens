@@ -41,6 +41,7 @@ from langchain_core.retrievers import BaseRetriever
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 
 from codelens import embed_texts
+from redact import redact
 from llm_review import MODEL, SYSTEM_PROMPT, _norm, parse_and_validate
 
 
@@ -118,7 +119,7 @@ def build_chain(retriever: BaseRetriever, llm):
     """retriever | prompt | llm | parser | validator, as one LangChain chain.
 
     Input : {"new_code": "<source code to review>"}
-    Output: {"new_code", "docs", "raw", "kept", "dropped"}
+    Output: {"new_code", "docs", "raw", "kept", "dropped", "redactions"}
     """
 
     def validate(state: dict) -> dict:
@@ -126,8 +127,15 @@ def build_chain(retriever: BaseRetriever, llm):
         kept, dropped = parse_and_validate(state["raw"], valid_ids)
         return {**state, "kept": kept, "dropped": dropped}
 
+    def safe_inputs(s: dict) -> dict:
+        """Redact secrets from BOTH the references and the new code before the LLM sees them."""
+        return {
+            "references": redact(format_docs(s["docs"]))[0],
+            "new_code": redact(s["new_code"])[0],
+        }
+
     review_step = (
-        (lambda s: {"references": format_docs(s["docs"]), "new_code": s["new_code"]})
+        safe_inputs
         | PROMPT
         | llm
         | StrOutputParser()
@@ -137,4 +145,8 @@ def build_chain(retriever: BaseRetriever, llm):
         RunnablePassthrough.assign(docs=itemgetter("new_code") | retriever)  # 1. retrieve
         | RunnablePassthrough.assign(raw=review_step)                        # 2-4. prompt -> LLM -> parse
         | RunnableLambda(validate)                                           # 5. check citations
+        | RunnablePassthrough.assign(                                        # 6. report what was redacted
+            redactions=lambda s: redact(s["new_code"])[1]
+            + [f for d in s["docs"] for f in redact(d.page_content)[1]]
+        )
     )
