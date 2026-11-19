@@ -1,0 +1,13 @@
+# CodeLens theme (rose and gold). The app draws its own Light / Dark switch in app.py; these
+# values only style Streamlit's own widgets before the page loads.
+[theme]
+base = "light"
+baseRadius = "small"
+font = "sans-serif"
+primaryColor = "#cf2e67"
+backgroundColor = "#fdf7f9"
+secondaryBackgroundColor = "#f2d9e3"
+textColor = "#2a1220"
+
+[client]
+toolbarMode = "minimal"

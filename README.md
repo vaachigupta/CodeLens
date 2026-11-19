@@ -65,6 +65,7 @@ The whole thing is one LangChain chain written with the `|` (LCEL) syntax.
 | `codelens.py` | Chunking, embeddings, Chroma vector store, retrieval |
 | `llm_review.py` | System prompt, Groq call, JSON parsing, citation validation |
 | `chain.py` | LangChain chain: retriever, prompt, model, parser, validator (plus an offline mock model) |
+| `app.py`, `.streamlit/config.toml` | Streamlit web interface (three columns: your code, review notes, the cited function) |
 | `run_llm.py` | Command line runner for reviewing one file |
 | `evaluate.py` | Evaluation harness: CodeLens versus a no-retrieval baseline |
 | `redact.py` | Secret redaction applied before code reaches the LLM |
@@ -105,6 +106,23 @@ $env:CODELENS_PROMPT="v2"
 
 ## Usage
 
+Web interface:
+
+```
+streamlit run app.py
+```
+
+Paste code (or pick a sample), choose a codebase (a local folder or a public GitHub link) from the
+top bar, and press Review code. The page has three columns. The left one shows your code with the lines
+a note is about highlighted. The middle one lists the review notes. Clicking "Show this one" on a note
+selects it, and the right column then shows the existing function that note is based on, with line
+numbers. Notes that cite a function that was not retrieved are rejected and counted. Secrets found in the
+code are listed as redacted. Settings holds top-k, the prompt version (v1 or v2), a demo mode that uses a
+fake model so the interface can be tried without an API key (its comments are not real reviews), and an
+option to show the same model without the codebase next to the review. There is a Light and a Dark
+theme. Which lines a note highlights is decided by simple pattern rules on your code (for example the
+`except:` line for a bare-except note), not by the model.
+
 Review one file against a codebase:
 
 ```
@@ -122,7 +140,7 @@ python run_llm.py file.py --plain  # direct Groq call without LangChain, for com
 Other tools (none of them need an API key):
 
 ```
-python -m pytest -q                      # 21 offline tests
+python -m pytest -q                      # 25 offline tests
 python redact.py path\to\file.py         # show the code with secrets redacted, and what was found
 python retrieval_eval.py --repo <repo>   # retrieval stage on its own
 python autoencoder_novelty.py --repo <repo> --foreign <other_repo>
@@ -199,7 +217,7 @@ between `eval_20261118_155345` and `eval_20261118_160511` (it returned a bool wh
 third run on is partly that fix.
 
 **Results on the held-out set** (8 files: 4 conformant, 4 deviant, 6 seeded violations;
-top-k 5; each configuration run once):
+top-k 5; prompt v1 run twice, v2 and the baseline once):
 
 | | CodeLens, prompt v1 | CodeLens, prompt v2 | Baseline (no retrieval) |
 |---|---|---|---|
@@ -208,7 +226,13 @@ top-k 5; each configuration run once):
 | Comments on deviant files | 8 (6 on target) | 6 (6 on target) | 24 (3 on target) |
 | Citation validity | 12/12 | 6/6 | n/a |
 
-Both prompts caught every seeded violation in the held-out set. Prompt v2 produced no
+A second held-out run with prompt v1 (`eval_20261119_133321`, no baseline) scored 5/6 and flagged 2/4
+conformant files (`conformant_h2`: 2 comments, `conformant_h4`: 2 comments). It missed the `.format()` in
+`deviant_h4`: its second comment is about the printed message lacking the exception, not the string
+format. So prompt v1 scored 5/6 and 6/6 on the same held-out files and flagged the same two conformant
+files both times, which shows the run-to-run spread on this set too.
+
+In the table above, the first v1 run and the v2 run caught every seeded violation in the held-out set. Prompt v2 produced no
 comments on conformant files and no off-target comments, where v1 produced 4 comments on
 two conformant files (`conformant_h2`, `conformant_h4`). This is one run each on 8 files,
 so it is an indication and not a proven difference. Some of v1's held-out comments may also
@@ -288,10 +312,12 @@ styled. It is a standalone script and is not part of the review chain.
 checks a secret placed in both the new code and a reference never appears in the prompt
 sent to the model.
 
-**Tests.** 21 offline tests pass (`python -m pytest -q`): the chunker (functions, methods,
+**Tests.** 25 offline tests pass (`python -m pytest -q`): the chunker (functions, methods,
 skipped folders and broken files, duplicate names), citation validation (including
 Windows `\` against `/` paths, bad JSON, empty comment lists), redaction, the full chain with
-a fake model, spot checks of the scoring rules, and the autoencoder.
+a fake model, spot checks of the scoring rules, the autoencoder, and the web interface (run with
+Streamlit's test runner in demo mode: a review shows a note, the made-up citation is dropped, empty code
+and a missing folder give a message and not a crash).
 
 ## Prompt iteration
 
@@ -328,6 +354,8 @@ defaults to 3).
 ## Known limits of the current build
 
 - Python only.
+- In the web interface the highlighted lines are chosen by pattern rules, so a note can highlight the
+  `def` line when no better line is found.
 - Scoring is keyword-based, so a comment can be credited or missed by wording alone.
 - The development test files were revised after results were seen (see above), so they
   are no longer a clean test. The held-out set was not edited.
