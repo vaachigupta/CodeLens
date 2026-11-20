@@ -202,7 +202,7 @@ textarea::placeholder, input::placeholder {color:var(--muted) !important; opacit
 @keyframes spin {to{transform:rotate(360deg)}}
 /* ---- evidence ---- */
 .evi-for {margin:0; color:var(--muted); font-size:15px;}
-.nsrc code {overflow-wrap:anywhere;}
+.nsrc code {overflow-wrap:break-word;}
 .evi-name {margin:2px 0 4px; color:var(--hot); font-family:var(--mono); font-size:21px; font-weight:700;
   letter-spacing:-.01em; word-break:break-all;}
 .evi-path {margin:0 0 14px; color:var(--muted); font-size:15px;}
@@ -651,7 +651,7 @@ with st.container(key="cols"):
                             f'<div class="note{sel}"><span class="letter">{chr(65 + i)}</span><div class="nbody">'
                             f'<div class="ntitle">{esc(c.get("issue", "Comment"))}<span class="cat">{esc(cat)}</span></div>'
                             f'<div class="ntext">{esc(c.get("comment", ""))}</div>'
-                            f'<div class="nsrc">based on <code>{esc(short(c.get("cited_source", "")))}</code></div></div></div>',
+                            f'<div class="nsrc">based on <code>{esc(short(c.get("cited_source", ""))).replace("::", "::<wbr>")}</code></div></div></div>',
                             unsafe_allow_html=True)
                         with st.container(key=f"pick_{i}"):
                             if i != ss["sel"]:

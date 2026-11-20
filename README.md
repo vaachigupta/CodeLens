@@ -217,7 +217,7 @@ between `eval_20261118_155345` and `eval_20261118_160511` (it returned a bool wh
 third run on is partly that fix.
 
 **Results on the held-out set** (8 files: 4 conformant, 4 deviant, 6 seeded violations;
-top-k 5; prompt v1 run twice, v2 and the baseline once):
+top-k 5; prompt v1 run twice, v2 three times, the baseline once; the table below shows the first run of each prompt):
 
 | | CodeLens, prompt v1 | CodeLens, prompt v2 | Baseline (no retrieval) |
 |---|---|---|---|
@@ -232,13 +232,23 @@ conformant files (`conformant_h2`: 2 comments, `conformant_h4`: 2 comments). It 
 format. So prompt v1 scored 5/6 and 6/6 on the same held-out files and flagged the same two conformant
 files both times, which shows the run-to-run spread on this set too.
 
-In the table above, the first v1 run and the v2 run caught every seeded violation in the held-out set. Prompt v2 produced no
+In the table above, the first v1 run and the first v2 run caught every seeded violation in the held-out set. Prompt v2 produced no
 comments on conformant files and no off-target comments, where v1 produced 4 comments on
 two conformant files (`conformant_h2`, `conformant_h4`). This is one run each on 8 files,
 so it is an indication and not a proven difference. Some of v1's held-out comments may also
 be legitimate: for example `conformant_h4` omits the `annualize_factor` parameter that the
 repo's `forecast_*` functions take. The held-out files were not edited after the results
 were seen, so this is reported as it came out.
+
+**Prompt v2, all three held-out runs:**
+
+| Run | Recall | Conformant files flagged | Comments on deviant files | Citation validity |
+|---|---|---|---|---|
+| 1 | 6/6 | 0/4 | 6 (6 on target) | 6/6 |
+| `eval_20261120_104306` | 6/6 | 0/4 | 6 (6 on target) | 6/6 |
+| `eval_20261120_104617` | 5/6 | 0/4 | 5 (5 on target) | 5/7 (2 dropped: malformed citation) |
+
+Over three held-out runs, prompt v2 caught 6/6, 6/6 and 5/6 seeded violations and made no comment on any conformant file. Prompt v1 flagged 2 of the 4 conformant files in both of its runs. The single miss (`eval_20261120_104617`, `deviant_h2`) was a citation formatting error: the model cited `src/detect_market_regime`, leaving out the file name (the retrieved ID is `src/regime_detection.py::detect_market_regime`), so the validator dropped both of its comments. The first of those was the correct finding (raising instead of returning a default); the second made a wrong claim about the repo's string style. The check requires an exact match, so a correct comment with a slightly wrong citation is lost. Three runs on 8 files is still a small sample.
 
 **How scoring works.** "Caught" is decided by keyword rules in `evaluate.py`, so it is
 approximate. Two of those rules (`raises_exception`, `logging_module`) were tightened
@@ -359,8 +369,8 @@ defaults to 3).
 - Scoring is keyword-based, so a comment can be credited or missed by wording alone.
 - The development test files were revised after results were seen (see above), so they
   are no longer a clean test. The held-out set was not edited.
-- The test sets are small (15 and 8 files) and prompt v2 was run once on each, so differences
-  of one or two files are not conclusive.
+- The test sets are small (15 and 8 files). Prompt v2 was run three times on the held-out set and
+  once on the development set, so differences of one or two files are not conclusive.
 - Only the seeded violations are scored. A comment that is correct but about something else
   (for example `deviant_7` returning a bool where the repo's `check_*` functions return a
   dict) counts as off-target. Whether a "conformant" file is truly conformant is itself a
@@ -371,3 +381,4 @@ defaults to 3).
   of each function.
 - A long file under review is embedded as one block, so retrieval can miss parts of it.
 - The LLM can be wrong. Its comments are suggestions for a human reviewer, not verdicts.
+- The citation check requires an exact match with a retrieved ID. A comment that names the right function with a malformed path (for example without the file name) is dropped, which cost one catch in the third v2 held-out run. Accepting a unique name match was not added, because it would be a change made after seeing held-out results.
