@@ -67,3 +67,14 @@ def test_missing_folder_is_reported(app):
     next(b for b in app.button if b.key == "run").click().run()
     assert not app.exception
     assert "Folder not found" in md(app)
+    
+
+def test_new_review_clears_result(app):
+    app.text_area(key="code_input").set_value("def computeRollingVar(Returns, Window=21):\n    return Returns.rolling(Window).var()")
+    next(b for b in app.button if b.key == "run").click().run()
+    assert app.session_state["result"] is not None
+    next(b for b in app.button if b.key == "new_btn").click().run()
+    assert not app.exception
+    assert app.session_state["result"] is None
+    assert app.session_state["code_input"] == ""
+    assert "Review code the way a teammate" in md(app)

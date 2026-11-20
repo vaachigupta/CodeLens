@@ -71,7 +71,7 @@ The whole thing is one LangChain chain written with the `|` (LCEL) syntax.
 | `redact.py` | Secret redaction applied before code reaches the LLM |
 | `retrieval_eval.py` | Evaluates the retrieval stage alone (no LLM, no API key) |
 | `autoencoder_novelty.py` | Small numpy autoencoder that scores how unlike the codebase a function is |
-| `tests/` | Offline tests (`python -m pytest -q`): chunker, citation check, redaction, chain, scoring rules, autoencoder |
+| `tests/` | Offline tests (`python -m pytest -q`): chunker, citation check, redaction, chain, scoring rules, autoencoder, web interface |
 | `test_cases/` | 15 seeded test files and `manifest.json` (what each file contains) |
 | `heldout_cases/` | 8 separate test files and `manifest.json`, kept apart from the development set |
 | `test_cases/archive_v1/` | Original versions of two conformant files that were later rewritten |
@@ -120,8 +120,14 @@ numbers. Notes that cite a function that was not retrieved are rejected and coun
 code are listed as redacted. Settings holds top-k, the prompt version (v1 or v2), a demo mode that uses a
 fake model so the interface can be tried without an API key (its comments are not real reviews), and an
 option to show the same model without the codebase next to the review. There is a Light and a Dark
-theme. Which lines a note highlights is decided by simple pattern rules on your code (for example the
-`except:` line for a bare-except note), not by the model.
+theme. Which lines a note highlights is decided by simple pattern rules, not by the model: on your code
+(for example the `except:` line for a bare-except note) and on the cited function (for example its
+`raise` line for an error-handling note). After a review, Edit code keeps your code for another try,
+New review clears the page, and Export review saves the notes as Markdown. The comparison without the
+codebase is only shown if it was switched on before the review was run. A GitHub repository is fetched
+with a shallow `git clone`; if git is missing, fails or takes over 60 seconds, the repository is
+downloaded as a zip instead. A copy is only reused once it has finished downloading, so a broken clone
+is fetched again. Each codebase is indexed once per session, so later reviews against it are faster.
 
 Review one file against a codebase:
 
@@ -140,7 +146,7 @@ python run_llm.py file.py --plain  # direct Groq call without LangChain, for com
 Other tools (none of them need an API key):
 
 ```
-python -m pytest -q                      # 25 offline tests
+python -m pytest -q                      # 33 offline tests
 python redact.py path\to\file.py         # show the code with secrets redacted, and what was found
 python retrieval_eval.py --repo <repo>   # retrieval stage on its own
 python autoencoder_novelty.py --repo <repo> --foreign <other_repo>
@@ -322,12 +328,14 @@ styled. It is a standalone script and is not part of the review chain.
 checks a secret placed in both the new code and a reference never appears in the prompt
 sent to the model.
 
-**Tests.** 25 offline tests pass (`python -m pytest -q`): the chunker (functions, methods,
+**Tests.** 33 offline tests pass (`python -m pytest -q`): the chunker (functions, methods,
 skipped folders and broken files, duplicate names), citation validation (including
 Windows `\` against `/` paths, bad JSON, empty comment lists), redaction, the full chain with
 a fake model, spot checks of the scoring rules, the autoencoder, and the web interface (run with
 Streamlit's test runner in demo mode: a review shows a note, the made-up citation is dropped, empty code
-and a missing folder give a message and not a crash).
+and a missing folder give a message and not a crash, New review clears the page), and helper functions
+of the web interface (which line of a cited function is highlighted for a note, and that a finished
+GitHub download is reused while a half-finished one is fetched again).
 
 ## Prompt iteration
 
@@ -364,8 +372,8 @@ defaults to 3).
 ## Known limits of the current build
 
 - Python only.
-- In the web interface the highlighted lines are chosen by pattern rules, so a note can highlight the
-  `def` line when no better line is found.
+- In the web interface the highlighted lines, in your code and in the cited function, are chosen by
+  pattern rules, so a note can highlight the `def` line when no better line is found.
 - Scoring is keyword-based, so a comment can be credited or missed by wording alone.
 - The development test files were revised after results were seen (see above), so they
   are no longer a clean test. The held-out set was not edited.

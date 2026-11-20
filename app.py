@@ -89,6 +89,7 @@ h1,h2,h3 {font-family:var(--headf); color:var(--head);}
 .st-key-cols [data-testid="stHorizontalBlock"] {gap:0 !important; align-items:stretch;}
 .st-key-cols [data-testid="stColumn"] {padding:0; min-width:0;}
 .st-key-col_code, .st-key-col_notes, .st-key-col_evi {min-height:calc(100vh - 60px); border-right:1px solid var(--rule);}
+[data-testid="stLayoutWrapper"]:has(> [class*="st-key-col_"]) {flex:1 1 auto;}
 .st-key-col_code {background:var(--panel);}
 .st-key-col_notes {background:var(--notes);}
 .st-key-col_evi {background:var(--ev); border-right:0; --ink:var(--evi_ink); --muted:var(--evi_muted); --rule:var(--evi_rule);
@@ -106,6 +107,8 @@ h1,h2,h3 {font-family:var(--headf); color:var(--head);}
 [class*="st-key-head_"] .chead {border:0; padding:0; min-height:0;}
 .st-key-head_code {padding-right:40px !important;}
 .st-key-head_code [data-testid="stColumn"]:last-child [data-testid="stElementContainer"] {margin-left:auto;}
+.st-key-head_code [data-testid="stColumn"]:last-child [data-testid="stHorizontalBlock"] [data-testid="stElementContainer"] {margin-left:0;}
+.st-key-head_notes [data-testid="stColumn"]:last-child [data-testid="stElementContainer"] {margin-left:auto;}
 .stApp code {background:transparent !important; color:var(--ink) !important; padding:0 !important;}
 /* ---- buttons ---- */
 .stButton button, [data-testid="stDownloadButton"] button, [data-testid="stPopover"] > div > button {
@@ -113,9 +116,9 @@ h1,h2,h3 {font-family:var(--headf); color:var(--head);}
   font-family:var(--serif); font-size:15px; min-height:34px; height:34px; padding:0 14px;}
 .stButton button p {color:inherit; font-size:15px;}
 .stButton button:hover {border-color:var(--muted);}
-.stButton button[kind="primary"] {background:var(--accent); color:var(--accent_fg); border-color:var(--accent);
+.stButton button[kind="primary"], [data-testid="stDownloadButton"] button[kind="primary"] {background:var(--accent); color:var(--accent_fg); border-color:var(--accent);
   font-weight:650;}
-.stButton button[kind="primary"] p {color:var(--accent_fg);}
+.stButton button[kind="primary"] p, [data-testid="stDownloadButton"] button[kind="primary"] p {color:var(--accent_fg);}
 .stButton button:disabled {opacity:.45;}
 .st-key-samples .stButton button {border-radius:999px; background:color-mix(in srgb,var(--accent) 9%,transparent);
   border-color:color-mix(in srgb,var(--accent) 35%,transparent); height:32px; min-height:32px;}
@@ -271,42 +274,47 @@ GITHUB_RE = re.compile(r"https?://github\.com/([\w.-]+)/([\w.-]+?)(?:\.git)?/?")
 
 
 def fetch_github(url: str):
-    """Shallow-clone (or download as zip) a PUBLIC GitHub repo. Returns (path, error)."""
+    """Get a PUBLIC GitHub repo: shallow git clone, falling back to a zip download. Returns (path, error)."""
     m = GITHUB_RE.fullmatch(url.strip())
     if not m:
         return None, "Enter a link like https://github.com/owner/repo"
     owner, name = m.groups()
     dest = os.path.join(CACHE_DIR, f"{owner}__{name}")
-    if os.path.isdir(dest) and os.listdir(dest):
+    ok_mark = os.path.join(dest, ".codelens_ok")
+    if os.path.isfile(ok_mark):                         # only reuse a copy that finished downloading
         return dest, None
     os.makedirs(CACHE_DIR, exist_ok=True)
     shutil.rmtree(dest, ignore_errors=True)
-    env = {**os.environ, "GIT_TERMINAL_PROMPT": "0"}   # never wait for a password
+    env = {**os.environ, "GIT_TERMINAL_PROMPT": "0", "GCM_INTERACTIVE": "never"}  # never wait for a login
     try:
         r = subprocess.run(["git", "clone", "--depth", "1", "--single-branch", "-q",
                             f"https://github.com/{owner}/{name}.git", dest],
-                           capture_output=True, text=True, timeout=180, env=env)
+                           capture_output=True, text=True, timeout=60, env=env,
+                           stdin=subprocess.DEVNULL)
         if r.returncode == 0:
+            open(ok_mark, "w").close()
             return dest, None
-        err = r.stderr.strip().splitlines()[-1] if r.stderr.strip() else "git clone failed"
-        if "not found" in err.lower() or "authentication" in err.lower() or "could not read" in err.lower():
+        err = r.stderr.strip().lower()
+        if "not found" in err or "authentication" in err or "could not read username" in err:
             return None, "Repository not found, or it is private. Only public repositories are supported."
-        return None, f"Could not clone the repository: {err[:200]}"
-    except FileNotFoundError:
-        pass                                            # git not installed: fall back to a zip download
-    except subprocess.TimeoutExpired:
-        shutil.rmtree(dest, ignore_errors=True)
-        return None, "Cloning took too long (over 3 minutes). Try a smaller repository."
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass                                            # no git, or git hung: try the zip instead
+    shutil.rmtree(dest, ignore_errors=True)
     try:
         zpath = dest + ".zip"
-        urllib.request.urlretrieve(f"https://github.com/{owner}/{name}/archive/HEAD.zip", zpath)
+        with urllib.request.urlopen(f"https://github.com/{owner}/{name}/archive/HEAD.zip", timeout=120) as resp, \
+                open(zpath, "wb") as f:
+            shutil.copyfileobj(resp, f)
         with zipfile.ZipFile(zpath) as z:
             z.extractall(dest)
         os.remove(zpath)
+        open(ok_mark, "w").close()
         return dest, None
     except Exception as e:  # noqa: BLE001
         shutil.rmtree(dest, ignore_errors=True)
-        return None, f"Could not download the repository ({str(e)[:120]})."
+        if "404" in str(e):
+            return None, "Repository not found, or it is private. Only public repositories are supported."
+        return None, f"Could not download the repository ({str(e)[:120]}). Check your internet connection."
 
 
 @st.cache_resource(show_spinner=False)
@@ -385,6 +393,31 @@ def lines_for(c: dict, code: str) -> list[int]:
         hits = [i + 1 for i, ln in enumerate(lines) if re.match(r"\s*(async\s+)?def\s", ln)][:1] or [1]
     return hits
 
+def evidence_lines(c: dict, ref: str) -> list[int]:
+    """Which lines of the cited reference function show the convention a note relies on (1-based,
+    within the snippet). Same kind of display aid as lines_for: pattern rules, no model call."""
+    lines = ref.splitlines()
+    key, _ = categorize(c)
+    text = f"{c.get('issue', '')} {c.get('comment', '')}".lower()
+    patterns = {
+        "raises_exception": r"^\s*raise\b",
+        "bare_except": r"^\s*except\b",
+        "logging_module": r"\blogging\.|\blogger\.|import logging",
+        "string_format": r"\bf[\"']|\.format\(",
+        "import_star": r"^\s*(from|import)\b",
+    }
+    pat = patterns.get(key)
+    if pat is None:
+        if "docstring" in text:
+            pat = r"^\s*[rRuU]?(\"\"\"|''')"
+        elif "return" in text:
+            pat = r"^\s*return\b"
+        elif "print" in text or "exception" in text or "error" in text:
+            pat = r"^\s*(raise|except)\b"
+    hits = [i + 1 for i, ln in enumerate(lines) if pat and re.search(pat, ln)]
+    if not hits:
+        hits = [i + 1 for i, ln in enumerate(lines) if re.match(r"\s*(async\s+)?def\s", ln)][:1] or [1]
+    return hits
 
 TOKEN_RE = re.compile(r"(?P<comment>#.*$)|(?P<string>[fFrRbB]{0,2}\"[^\"]*\"|[fFrRbB]{0,2}'[^']*')"
                       r"|(?P<number>\b\d+(?:\.\d+)?\b)|(?P<word>[A-Za-z_]\w*)")
@@ -460,6 +493,10 @@ def edit_code():
     ss["editing"] = True
 
 
+def new_review():
+    ss["result"], ss["code_input"], ss["editing"], ss["sel"] = None, "", False, 0
+    
+
 def repo_name() -> str:
     if ss["mode"] == "GitHub repository" and ss["gh_url"].strip():
         m = GITHUB_RE.fullmatch(ss["gh_url"].strip())
@@ -478,8 +515,7 @@ with st.container(key="topbar"):
     if ss["use_mock"]:
         c_note.markdown('<div class="demo-note">Demo mode. No API key needed. The notes are not a real review.</div>',
                         unsafe_allow_html=True)
-    meta = f" · {ss['n_funcs']} functions" if ss["n_funcs"] else ""
-    with c_repo.popover(f"Reviewing against  {repo_name()}{meta}", use_container_width=True):
+    with c_repo.popover(f"Reviewing against  {repo_name()}", use_container_width=True):
         st.markdown('<div style="font-family:var(--headf);font-weight:700;font-size:18px">Choose a codebase</div>',
                     unsafe_allow_html=True)
         st.radio("Codebase source", ["Local folder", "GitHub repository"], key="mode", horizontal=True,
@@ -523,7 +559,11 @@ def run_review(code: str):
         return None, err
     collection, chunks, n_files, total = index_codebase(repo, ss["nonce"])
     if not chunks:
-        return None, "No Python functions were found in that codebase."
+        if ss["mode"] == "GitHub repository":
+            shutil.rmtree(repo, ignore_errors=True)   # drop a broken cached copy so the next try re-clones
+        ss["nonce"] += 1                              # and forget the empty result
+        return None, "No Python functions were found in that codebase. Press Review code again to retry."
+    ss["nonce"] = ss["nonce"]
     ss["n_funcs"] = len(chunks)
     chain_mod.PROMPT = make_prompt(ss["version"])
     retriever = CodebaseRetriever(collection=collection, k=min(ss["top_k"], len(chunks)))
@@ -541,7 +581,7 @@ def run_review(code: str):
     refs = {_norm(d.metadata["id"]): d for d in out["docs"]}
     return dict(code=code, kept=out["kept"], dropped=out["dropped"], refs=refs, generic=generic,
                 redactions=out.get("redactions", []), version=ss["version"], mock=ss["use_mock"],
-                label=repo if ss["mode"] == "Local folder" else ss["gh_url"].strip(), total=total,
+                label=repo if ss["mode"] == "Local folder" else ss["gh_url"].strip(), total=total, compared=ss["compare"],
                 indexed=len(chunks)), None
 
 
@@ -564,11 +604,14 @@ with st.container(key="cols"):
     # ---- column 1: your code -------------------------------------------------
     with col_code.container(key="col_code"):
         with st.container(key="head_code"):
-            h1, h2 = st.columns([3, 2], vertical_alignment="center")
+            showing = result is not None and not ss["editing"]
+            h1, h2 = st.columns([2, 3] if showing else [3, 2], vertical_alignment="center")
             h1.markdown('<div class="chead"><h2>Your code</h2></div>', unsafe_allow_html=True)
             with h2:
-                if result is not None and not ss["editing"]:
-                    st.button("Edit code", key="edit_btn", on_click=edit_code)
+                if showing:
+                    with st.container(horizontal=True, horizontal_alignment="right", gap="small"):
+                        st.button("Edit code", type="primary", key="edit_btn", on_click=edit_code)
+                        st.button("New review", type="primary", key="new_btn", on_click=new_review)
                     run_clicked = False
                 else:
                     run_clicked = st.button("Review code", type="primary", key="run")
@@ -604,8 +647,11 @@ with st.container(key="cols"):
                 if not ss["code_input"].strip():
                     new, err = None, "Paste some code first, or pick a sample."
                 else:
-                    st.markdown(progress_html(1), unsafe_allow_html=True)
+                    slot = st.empty()
+                    slot.markdown(progress_html(1), unsafe_allow_html=True)
                     new, err = run_review(ss["code_input"])
+                    if err:
+                        slot.empty()          # don't leave the spinner running next to an error
                 if err:
                     st.markdown(f'<div class="allclear" style="border-left-color:var(--accent)">'
                                 f'<strong>The review didn\'t finish.</strong><p>{esc(err)}</p></div>', unsafe_allow_html=True)
@@ -622,7 +668,7 @@ with st.container(key="cols"):
                 with t2:
                     if result is not None:
                         st.download_button("Export review", review_markdown(result["kept"], result["label"], result["version"]),
-                                           file_name="codelens_review.md", mime="text/markdown", key="export")
+                                           file_name="codelens_review.md", mime="text/markdown", key="export", type="primary")
             with st.container(key="notes_body"):
                 if err:
                     st.markdown(f'<div class="allclear" style="border-left-color:var(--accent)"><strong>The review didn\'t finish.</strong>'
@@ -656,7 +702,7 @@ with st.container(key="cols"):
                         with st.container(key=f"pick_{i}"):
                             if i != ss["sel"]:
                                 st.button("Show this one", key=f"pickbtn_{i}", on_click=pick, args=(i,))
-                    if result["generic"] is not None and ss["compare"]:
+                    if result.get("compared"):
                         items = "".join(f'<li><strong>{esc(g.get("issue", "Comment"))}</strong>. {esc(g.get("comment", ""))}</li>'
                                         for g in result["generic"])
                         st.markdown('<div class="generic"><h3>Without your codebase</h3>'
@@ -695,7 +741,9 @@ with st.container(key="cols"):
                             unsafe_allow_html=True)
                 if d is not None:
                     first = int(d.metadata.get("line") or 1)
-                    st.markdown(f'<div class="evi-code">{code_html(d.page_content, first_line=first)}</div>', unsafe_allow_html=True)
+                    emarks = {ln: [sel] for ln in evidence_lines(c, d.page_content)}
+                    st.markdown(f'<div class="evi-code">{code_html(d.page_content, emarks, sel, first_line=first)}</div>',
+                                unsafe_allow_html=True)
                 lis = "".join(f'<li><code>{esc(short(k))}</code></li>' for k in result["refs"])
                 st.markdown(f'<details class="consulted"><summary>Functions consulted ({len(result["refs"])})</summary>'
                             f'<ul>{lis}</ul></details>', unsafe_allow_html=True)
