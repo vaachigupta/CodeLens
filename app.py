@@ -186,7 +186,7 @@ textarea::placeholder, input::placeholder {color:var(--muted) !important; opacit
 .nsrc code, code {font-family:var(--mono); font-size:.86em; color:var(--ink); background:transparent; padding:0;}
 [class*="st-key-pick_"] .stButton button {height:28px; min-height:28px; font-size:14px; padding:0 10px; margin:-6px 0 0 0;
   background:transparent; color:var(--accent); border-color:transparent; text-decoration:underline; text-underline-offset:3px;}
-.allclear {padding:18px 16px; border-left:3px solid var(--str); background:var(--panel);}
+.allclear {padding:18px 16px; border-left:3px solid var(--accent); background:var(--panel);}
 .allclear strong {font-size:18px;} .allclear p {margin:6px 0 0; color:var(--muted); font-size:16.5px;}
 .generic {margin-top:28px; padding-top:18px; border-top:1px dashed var(--rule);}
 .generic h3 {font-size:18px; margin:0;}
@@ -274,7 +274,8 @@ GITHUB_RE = re.compile(r"https?://github\.com/([\w.-]+)/([\w.-]+?)(?:\.git)?/?")
 
 
 def fetch_github(url: str):
-    """Get a PUBLIC GitHub repo: shallow git clone, falling back to a zip download. Returns (path, error)."""
+    """Get a PUBLIC GitHub repo. Downloads only the .py files (sparse clone), so big datasets and
+    model weights in the repo are never fetched. Returns (path, error)."""
     m = GITHUB_RE.fullmatch(url.strip())
     if not m:
         return None, "Enter a link like https://github.com/owner/repo"
@@ -286,36 +287,27 @@ def fetch_github(url: str):
     os.makedirs(CACHE_DIR, exist_ok=True)
     shutil.rmtree(dest, ignore_errors=True)
     env = {**os.environ, "GIT_TERMINAL_PROMPT": "0", "GCM_INTERACTIVE": "never"}  # never wait for a login
+
+    def git(*args, cwd=None):
+        return subprocess.run(["git", *args], capture_output=True, text=True, timeout=180, env=env,
+                              stdin=subprocess.DEVNULL, cwd=cwd)
     try:
-        r = subprocess.run(["git", "clone", "--depth", "1", "--single-branch", "-q",
-                            f"https://github.com/{owner}/{name}.git", dest],
-                           capture_output=True, text=True, timeout=60, env=env,
-                           stdin=subprocess.DEVNULL)
+        r = git("clone", "--depth", "1", "--filter=blob:none", "--no-checkout", "--single-branch", "-q",
+                f"https://github.com/{owner}/{name}.git", dest)
         if r.returncode == 0:
-            open(ok_mark, "w").close()
-            return dest, None
+            git("sparse-checkout", "set", "--no-cone", "*.py", cwd=dest)
+            r = git("checkout", "-q", cwd=dest)
+            if r.returncode == 0:
+                open(ok_mark, "w").close()
+                return dest, None
         err = r.stderr.strip().lower()
         if "not found" in err or "authentication" in err or "could not read username" in err:
+            shutil.rmtree(dest, ignore_errors=True)
             return None, "Repository not found, or it is private. Only public repositories are supported."
     except (FileNotFoundError, subprocess.TimeoutExpired):
-        pass                                            # no git, or git hung: try the zip instead
+        pass
     shutil.rmtree(dest, ignore_errors=True)
-    try:
-        zpath = dest + ".zip"
-        with urllib.request.urlopen(f"https://github.com/{owner}/{name}/archive/HEAD.zip", timeout=120) as resp, \
-                open(zpath, "wb") as f:
-            shutil.copyfileobj(resp, f)
-        with zipfile.ZipFile(zpath) as z:
-            z.extractall(dest)
-        os.remove(zpath)
-        open(ok_mark, "w").close()
-        return dest, None
-    except Exception as e:  # noqa: BLE001
-        shutil.rmtree(dest, ignore_errors=True)
-        if "404" in str(e):
-            return None, "Repository not found, or it is private. Only public repositories are supported."
-        return None, f"Could not download the repository ({str(e)[:120]}). Check your internet connection."
-
+    return None, "Could not download the repository. Check the link, that git is installed, and your internet connection."
 
 @st.cache_resource(show_spinner=False)
 def index_codebase(path: str, nonce: int):
@@ -682,10 +674,12 @@ with st.container(key="cols"):
                 else:
                     kept, dropped = result["kept"], result["dropped"]
                     n_ref = len(result["refs"])
+                    cap = (f" Only the first {result['indexed']} of {result['total']} functions were indexed."
+                           if result["total"] > result["indexed"] else "")                    
                     st.markdown(f'<div class="summary">{len(kept)} note{"" if len(kept) == 1 else "s"}, compared with '
                                 f'{n_ref} function{"" if n_ref == 1 else "s"} from <code>{esc(repo_name())}</code>. '
                                 f'{len(result["redactions"])} secret{"" if len(result["redactions"]) == 1 else "s"} hidden '
-                                f'before the model saw your code.</div>', unsafe_allow_html=True)
+                                f'before the model saw your code.{esc(cap)}</div>', unsafe_allow_html=True)
                     if not kept:
                         st.markdown('<div class="allclear"><strong>Nothing to change.</strong>'
                                     '<p>Your code matches the conventions of the functions it was compared with.</p></div>',
